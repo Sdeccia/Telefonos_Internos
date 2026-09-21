@@ -1,0 +1,10 @@
+.git
+.gitignore
+.chrome-cdp
+captura-*.png
+extensions.csv
+data/*.json
+data/*.json.*
+data/respaldos/
+README.md
+INFORME.md

@@ -212,3 +212,31 @@ El nombre del sector va en la URL codificado (por ejemplo `Cocina%20%2F%20Econom
 
 El sistema no usa internet ni librerias externas: todo corre local. Solo necesita
 Node.js instalado en la PC donde se ejecuta `iniciar.cmd`.
+
+## Despliegue en NAS con Docker
+
+La carpeta incluye `Dockerfile` y `docker-compose.yml`. Como `Z:` corresponde
+al recurso compartido `Docker` del NAS, la ruta Linux habitual es
+`/volume1/Docker/Telefonos_Internos`. Entra al NAS por SSH/PuTTY y ejecuta:
+
+```sh
+cd /volume1/Docker/Telefonos_Internos
+sudo docker-compose up -d --build
+```
+
+El sistema quedara disponible en `http://IP_DEL_NAS:5173`. La carpeta `data/`
+se monta fuera del contenedor para conservar la base y los respaldos al
+actualizar o recrear el contenedor.
+
+Para comprobar el estado y ver los registros:
+
+```sh
+sudo docker-compose ps
+sudo docker-compose logs -f
+```
+
+Para detenerlo:
+
+```sh
+sudo docker-compose down
+```
