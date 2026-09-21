@@ -1,0 +1,15 @@
+# Datos operativos y respaldos: contienen informacion interna del hospital.
+data/*.json
+data/*.json.*
+data/respaldos/
+
+# Export original de FreePBX: puede contener secretos SIP.
+extensions.csv
+
+# Capturas y datos locales de herramientas.
+captura-*.png
+.chrome-cdp/
+
+# Archivos temporales.
+*.tmp
+*.log

@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Internos Telefonicos</title>
+<link rel="stylesheet" href="/styles.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>&#9742;</text></svg>">
+</head>
+<body>
+
+<header class="barra">
+  <div class="marca">
+    <div class="logo" aria-hidden="true">&#9742;</div>
+    <div>
+      <h1>Internos Telefonicos</h1>
+      <p class="sub" id="subtitulo">Cargando...</p>
+    </div>
+  </div>
+  <div class="acciones-barra">
+    <span class="guardado" id="guardado" hidden></span>
+    <a class="btn" id="btnExportar" href="/api/export.csv" download>Exportar CSV</a>
+    <a class="btn" id="btnImprimir" href="/imprimir" target="_blank" rel="noopener">Imprimir</a>
+    <a class="btn" id="btnPdf" href="/api/imprimir.pdf">Descargar PDF</a>
+    <button class="btn" id="btnSectores" type="button">Sectores</button>
+    <button class="btn" id="btnOrganizar" type="button">Organizar sectores</button>
+    <button class="btn primario" id="btnNuevo" type="button">+ Nuevo interno</button>
+  </div>
+</header>
+
+<section class="tarjetas" id="tarjetas" aria-label="Resumen">
+  <article class="tarjeta"><span class="valor" id="kTotal">0</span><span class="etiqueta">Internos</span></article>
+  <article class="tarjeta"><span class="valor ok" id="kActivos">0</span><span class="etiqueta">Activos</span></article>
+  <article class="tarjeta"><span class="valor alerta" id="kInactivos">0</span><span class="etiqueta">Inactivos</span></article>
+  <article class="tarjeta"><span class="valor" id="kSectores">0</span><span class="etiqueta">Sectores</span></article>
+  <article class="tarjeta"><span class="valor" id="kSinSector">0</span><span class="etiqueta">Sin sector</span></article>
+</section>
+
+<section class="panel">
+  <div class="fila-controles">
+    <div class="buscador">
+      <span class="lupa" aria-hidden="true">&#128269;</span>
+      <input type="search" id="q" placeholder="Buscar por numero, nombre, sector o nota..." autocomplete="off" aria-label="Buscar">
+      <button class="limpiar" id="limpiarQ" type="button" title="Limpiar" hidden>&times;</button>
+    </div>
+    <select id="sector" aria-label="Filtrar por sector"><option value="">Todos los sectores</option></select>
+    <select id="estado" aria-label="Filtrar por estado">
+      <option value="">Todos los estados</option>
+      <option value="activo">Solo activos</option>
+      <option value="inactivo">Solo inactivos</option>
+    </select>
+    <select id="orden" aria-label="Ordenar">
+      <option value="interno">Orden: numero</option>
+      <option value="nombre">Orden: nombre</option>
+      <option value="sector">Orden: sector</option>
+    </select>
+    <button class="btn sutil" id="btnLimpiarFiltros" type="button">Limpiar filtros</button>
+  </div>
+
+  <div class="tabs" role="tablist">
+    <button class="tab activo" data-vista="sectores" role="tab" aria-selected="true">Vista por sector</button>
+    <button class="tab" data-vista="lista" role="tab" aria-selected="false">Lista completa</button>
+  </div>
+</section>
+
+<main>
+  <section id="vistaSectores" class="rejilla" aria-live="polite"></section>
+
+  <section id="vistaLista" hidden>
+    <div class="tabla-envoltura">
+      <table class="tabla">
+        <thead>
+          <tr>
+            <th class="col-interno">Interno</th>
+            <th>Nombre</th>
+            <th class="col-sector">Sector</th>
+            <th class="col-estado">Estado</th>
+            <th class="col-notas">Notas</th>
+            <th class="col-acciones"></th>
+          </tr>
+        </thead>
+        <tbody id="cuerpoTabla"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <p class="vacio" id="vacio" hidden>No hay internos que coincidan con la busqueda.</p>
+</main>
+
+<footer class="pie">
+  <span id="pieInfo"></span>
+</footer>
+
+<div class="modal-fondo" id="modal" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitulo">
+    <form id="form">
+      <header class="modal-cab">
+        <h2 id="modalTitulo">Nuevo interno</h2>
+        <button class="cerrar" type="button" id="btnCerrar" aria-label="Cerrar">&times;</button>
+      </header>
+      <div class="modal-cuerpo">
+        <label>Interno
+          <input id="fInterno" inputmode="numeric" pattern="\d{1,6}" required placeholder="123">
+          <small>Numero de extension, solo digitos (ej. 149).</small>
+        </label>
+        <label>Nombre
+          <input id="fNombre" required maxlength="80" placeholder="Ej: Informatica - Sergio">
+          <small>Se muestra en el dashboard y en los resultados de busqueda.</small>
+        </label>
+        <label>Sector
+          <input id="fSector" list="listaSectores" placeholder="Ej: Informatica">
+          <datalist id="listaSectores"></datalist>
+          <small>Elegi un sector existente de la lista o escribi uno nuevo.</small>
+        </label>
+        <label>Estado
+          <select id="fEstado">
+            <option value="activo">Activo</option>
+            <option value="inactivo">Inactivo</option>
+          </select>
+        </label>
+        <label>Notas
+          <textarea id="fNotas" rows="2" maxlength="240" placeholder="Ubicacion fisica, responsable, observaciones..."></textarea>
+        </label>
+        <p class="error" id="errorForm" hidden></p>
+      </div>
+      <footer class="modal-pie">
+        <button class="btn peligro" type="button" id="btnEliminar" hidden>Eliminar</button>
+        <div class="espacio"></div>
+        <button class="btn" type="button" id="btnCancelar">Cancelar</button>
+        <button class="btn primario" type="submit" id="btnGuardar">Guardar</button>
+      </footer>
+    </form>
+  </div>
+</div>
+
+<div class="modal-fondo" id="modalSectores" hidden>
+  <div class="modal modal-ancho" role="dialog" aria-modal="true" aria-labelledby="tituloSectores">
+    <header class="modal-cab">
+      <h2 id="tituloSectores">Sectores</h2>
+      <button class="cerrar" type="button" id="btnCerrarSectores" aria-label="Cerrar">&times;</button>
+    </header>
+    <div class="modal-cuerpo">
+      <p class="pista">Arrastra las filas (o usa las flechas) para cambiar el orden. El color se aplica en todo el dashboard.</p>
+      <form class="fila-nueva" id="formSector">
+        <input id="nuevoSector" placeholder="Nombre del nuevo sector" maxlength="60" required>
+        <button class="btn primario" type="submit">Agregar</button>
+        <button class="btn" type="button" id="btnOrdenar">Ordenar A-Z</button>
+      </form>
+      <p class="error" id="errorSector" hidden></p>
+      <p class="pista" id="pistaSectores"></p>
+      <div class="tabla-envoltura en-modal">
+        <table class="tabla tabla-sectores">
+          <thead>
+            <tr>
+              <th class="col-orden" title="Orden manual"><span>#</span></th>
+              <th title="Color del sector"><span>Color</span></th>
+              <th><span>Sector</span></th>
+              <th class="col-num" title="Internos en el sector"><span>Internos</span></th>
+              <th class="col-num" title="Internos activos"><span>Activos</span></th>
+              <th class="col-num" title="Internos inactivos"><span>Inactivos</span></th>
+              <th class="col-acciones"></th>
+            </tr>
+          </thead>
+          <tbody id="cuerpoSectores"></tbody>
+        </table>
+      </div>
+    </div>
+    <footer class="modal-pie">
+      <span class="pista" id="pieSectores"></span>
+      <div class="espacio"></div>
+      <button class="btn" type="button" id="btnCerrarSectores2">Listo</button>
+    </footer>
+  </div>
+</div>
+
+<div class="avisos" id="avisos" aria-live="polite"></div>
+
+<script type="module" src="/app.js"></script>
+</body>
+</html>
