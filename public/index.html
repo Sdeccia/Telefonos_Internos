@@ -22,7 +22,7 @@
 <nav class="modulos" id="modulos" aria-label="Modulos">
   <button class="tab activo" data-modulo="dashboard" type="button">INTERNOS HOSPITAL</button>
   <button class="tab" data-modulo="guardias" type="button" data-restringido>GUARDIAS Y RETENES</button>
-  <button class="tab" data-modulo="funcionarios" type="button" data-restringido>CONTACTOS PERSONALES</button>
+  <button class="tab" data-modulo="funcionarios" type="button">FUNCIONARIOS</button>
   <button class="tab" data-modulo="flores" type="button">DIRECTORIO FLORES</button>
   <button class="tab" data-modulo="salud" type="button">DIRECTORIO NACIONAL DE SALUD</button>
 </nav>
@@ -104,7 +104,7 @@
   </div>
 
   <section id="moduloContactos" class="modulo-vista" hidden>
-    <div class="modulo-cab"><div><h2>Contactos personales</h2><p>Funcionarios, médicos y técnicos disponibles para armar guardias.</p></div><button class="btn primario" id="btnNuevoContacto" type="button">+ Nuevo funcionario</button></div>
+    <div class="modulo-cab"><div><h2>Funcionarios</h2><p>Funcionarios, médicos y técnicos disponibles para armar guardias.</p></div><button class="btn primario" id="btnNuevoContacto" type="button">+ Nuevo funcionario</button></div>
     <div class="fila-controles"><input class="campo-modulo" id="buscarContactos" placeholder="Buscar por nombre, C.I., especialidad o función..."></div>
     <div class="tabla-envoltura"><table class="tabla"><thead><tr><th>Nombre</th><th>Rol / función</th><th>Celular principal</th><th>Secundario</th><th>Disponibilidad</th><th></th></tr></thead><tbody id="tablaContactos"></tbody></table></div>
   </section>
