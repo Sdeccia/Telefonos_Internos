@@ -64,6 +64,8 @@ const el = {
   btnCerrar: $('#btnCerrar'),
   avisos: $('#avisos'),
   dashboardVista: $('#dashboardVista'),
+  tarjetas: $('#tarjetas'),
+  panelDashboard: $('#panelDashboard'),
   moduloContactos: $('#moduloContactos'),
   moduloGuardias: $('#moduloGuardias'),
   moduloVisorGuardias: $('#moduloVisorGuardias'),
@@ -259,6 +261,8 @@ function cambiarModulo(nombre) {
   }
   estado.modulo = nombre;
   el.dashboardVista.hidden = nombre !== 'dashboard';
+  el.tarjetas.hidden = nombre !== 'dashboard';
+  el.panelDashboard.hidden = nombre !== 'dashboard';
   [el.moduloContactos, el.moduloGuardias, el.moduloVisorGuardias, el.moduloFlores, el.moduloSalud].forEach((vista) => { vista.hidden = true; });
   const vista = { funcionarios: el.moduloContactos, guardias: el.moduloGuardias, 'visor-guardias': el.moduloVisorGuardias, flores: el.moduloFlores, salud: el.moduloSalud }[nombre];
   if (vista) vista.hidden = false;
