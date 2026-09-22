@@ -183,6 +183,7 @@ select:focus { outline: 2px solid var(--acento-suave); border-color: var(--acent
 }
 
 .modulos { display: flex; gap: 6px; flex-wrap: wrap; max-width: 1380px; margin: 0 auto; padding: 12px 22px 0; border-bottom: 1px solid var(--borde); }
+.modulos .tab { font-weight: 700; text-transform: uppercase; }
 .modulo-vista { max-width: 1380px; margin: 20px auto; padding: 0 22px; }
 .modulo-cab { display: flex; justify-content: space-between; align-items: start; gap: 16px; margin-bottom: 18px; }
 .modulo-cab h2 { margin: 0 0 5px; font-size: 22px; }
