@@ -504,7 +504,7 @@ async function manejarAPI(req, res, url) {
   }
 
   const modifica = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(metodo);
-  const recursoTelefonista = ['contactos', 'guardias'].includes(partes[1]);
+  const recursoTelefonista = ['contactos', 'funcionarios', 'guardias'].includes(partes[1]);
   if (recursoTelefonista && !esTelefonista(req)) {
     return error(res, 401, 'Este modulo requiere una sesion de telefonista o administrador.');
   }
@@ -514,12 +514,12 @@ async function manejarAPI(req, res, url) {
       : 'La cuenta administrador no esta configurada en el servidor.');
   }
 
-  if (partes[1] === 'contactos') {
+  if (['contactos', 'funcionarios'].includes(partes[1])) {
     const consulta = (url.searchParams.get('q') || '').toLocaleLowerCase();
     if (metodo === 'GET' && partes.length === 2) {
       const contactos = store.contactos_privados.filter((c) => !consulta
         || `${c.nombre} ${c.ci} ${c.rol} ${c.funcion}`.toLocaleLowerCase().includes(consulta));
-      return json(res, 200, { contactos });
+      return json(res, 200, partes[1] === 'funcionarios' ? { funcionarios: contactos } : { contactos });
     }
     if (metodo === 'POST' && partes.length === 2) {
       const cuerpo = await leerCuerpo(req);
@@ -528,7 +528,7 @@ async function manejarAPI(req, res, url) {
       }
       const contacto = { id: crypto.randomUUID(), nombre: limpiar(cuerpo.nombre), ci: limpiar(cuerpo.ci), rol: limpiar(cuerpo.rol), funcion: limpiar(cuerpo.funcion), celularPrincipal: limpiar(cuerpo.celularPrincipal), celularSecundario: limpiar(cuerpo.celularSecundario), disponibilidad: limpiar(cuerpo.disponibilidad) };
       await mutar((s) => { s.contactos_privados.push(contacto); return contacto; });
-      return json(res, 201, { contacto });
+      return json(res, 201, partes[1] === 'funcionarios' ? { funcionario: contacto } : { contacto });
     }
     if (partes.length === 3 && ['PUT', 'PATCH'].includes(metodo)) {
       const id = decodeURIComponent(partes[2]);

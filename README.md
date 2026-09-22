@@ -27,6 +27,8 @@ corriendo, todos los que entren ven y editan **los mismos datos**.
 ## Que se puede hacer
 
 - **Vista por sector**: tarjetas agrupadas por sector, con el color y el total de cada uno.
+- **Funcionarios**: agenda privada del personal hospitalario; telefonistas y administradores pueden cargar nombre, C.I., rol, celulares y disponibilidad.
+- **Guardias**: la gestión privada arma turnos usando Funcionarios; el **Visor de guardias** permite consultar el teléfono de guardia del día sin contraseña.
   Los sectores con mas de 5 internos muestran "Ver los N restantes".
 - **Lista completa**: tabla con interno, nombre, sector, estado y notas.
 - **Buscar**: por numero, nombre, sector o nota. Ignora mayusculas y acentos, asi que

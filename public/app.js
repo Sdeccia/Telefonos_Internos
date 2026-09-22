@@ -253,23 +253,23 @@ async function asegurarAdmin() {
 function puedePrivado() { return estado.rol === 'administrador' || estado.rol === 'telefonista'; }
 
 function cambiarModulo(nombre) {
-  if (['contactos', 'guardias'].includes(nombre) && !puedePrivado()) {
+  if (['funcionarios', 'guardias'].includes(nombre) && !puedePrivado()) {
     abrirAdmin();
     return;
   }
   estado.modulo = nombre;
   el.dashboardVista.hidden = nombre !== 'dashboard';
   [el.moduloContactos, el.moduloGuardias, el.moduloVisorGuardias, el.moduloFlores, el.moduloSalud].forEach((vista) => { vista.hidden = true; });
-  const vista = { contactos: el.moduloContactos, guardias: el.moduloGuardias, 'visor-guardias': el.moduloVisorGuardias, flores: el.moduloFlores, salud: el.moduloSalud }[nombre];
+  const vista = { funcionarios: el.moduloContactos, guardias: el.moduloGuardias, 'visor-guardias': el.moduloVisorGuardias, flores: el.moduloFlores, salud: el.moduloSalud }[nombre];
   if (vista) vista.hidden = false;
   document.querySelectorAll('[data-modulo]').forEach((b) => b.classList.toggle('activo', b.dataset.modulo === nombre));
   if (nombre !== 'dashboard') cargarModulo(nombre).catch((e) => aviso(e.message, 'mal'));
 }
 
 async function cargarModulo(nombre) {
-  if (nombre === 'contactos') {
+  if (nombre === 'funcionarios') {
     const q = encodeURIComponent($('#buscarContactos').value || '');
-    estado.contactos = (await pedir(`/api/contactos?q=${q}`)).contactos;
+    estado.contactos = (await pedir(`/api/funcionarios?q=${q}`)).funcionarios;
     el.tablaContactos.innerHTML = estado.contactos.map((c) => `<tr><td><strong>${escapar(c.nombre)}</strong><br><small>C.I. ${escapar(c.ci)}</small></td><td>${escapar(c.rol)}<br>${escapar(c.funcion)}</td><td>${escapar(c.celularPrincipal)}</td><td>${escapar(c.celularSecundario)}</td><td>${escapar(c.disponibilidad)} <button class="btn-mini peligro" data-borrar-contacto="${c.id}">Eliminar</button></td></tr>`).join('');
   }
   if (nombre === 'guardias') {
@@ -277,9 +277,9 @@ async function cargarModulo(nombre) {
     el.guardiaFecha.value = fecha;
     el.exportarGuardias.href = `/api/guardias/export.csv?fecha=${encodeURIComponent(fecha)}`;
     el.imprimirGuardias.href = `/guardias/imprimir?fecha=${encodeURIComponent(fecha)}`;
-    const [guardias, contactos] = await Promise.all([pedir(`/api/guardias?fecha=${fecha}`), pedir('/api/contactos')]);
+    const [guardias, contactos] = await Promise.all([pedir(`/api/guardias?fecha=${fecha}`), pedir('/api/funcionarios')]);
     estado.guardias = guardias.guardias;
-    estado.contactos = contactos.contactos;
+    estado.contactos = contactos.funcionarios;
     el.guardiaContacto.innerHTML = '<option value="">Funcionario</option>' + estado.contactos.map((c) => `<option value="${c.id}">${escapar(c.nombre)} - ${escapar(c.celularPrincipal)}</option>`).join('');
     el.tablaGuardias.innerHTML = estado.guardias.map((g) => `<tr><td>${escapar(g.fecha)}</td><td>${escapar(g.turno)}</td><td>${escapar(g.rolGuardia)}</td><td>${escapar(g.contactoNombre)}</td><td><a href="tel:${escapar(g.telefono)}">${escapar(g.telefono)}</a></td><td><button class="btn-mini peligro" data-borrar-guardia="${g.id}">Eliminar</button></td></tr>`).join('');
   }
@@ -310,9 +310,9 @@ async function nuevoContacto() {
   if (!nombre) return;
   const celularPrincipal = prompt('Celular principal:');
   if (!celularPrincipal) return;
-  await pedir('/api/contactos', { method: 'POST', body: JSON.stringify({ nombre, celularPrincipal, ci: prompt('C.I. (opcional):') || '', rol: prompt('Rol / especialidad:') || '', funcion: prompt('Funcion:') || '', celularSecundario: prompt('Celular secundario (opcional):') || '', disponibilidad: prompt('Disponibilidad / observaciones:') || '' }) });
-  aviso('Contacto creado.', 'ok');
-  await cargarModulo('contactos');
+  await pedir('/api/funcionarios', { method: 'POST', body: JSON.stringify({ nombre, celularPrincipal, ci: prompt('C.I. (opcional):') || '', rol: prompt('Rol / especialidad:') || '', funcion: prompt('Funcion:') || '', celularSecundario: prompt('Celular secundario (opcional):') || '', disponibilidad: prompt('Disponibilidad / observaciones:') || '' }) });
+  aviso('Funcionario creado.', 'ok');
+  await cargarModulo('funcionarios');
 }
 
 async function nuevoDirectorio(campo) {
@@ -981,7 +981,7 @@ document.addEventListener('click', async (evento) => {
   const contacto = evento.target.closest('[data-borrar-contacto]');
   const guardia = evento.target.closest('[data-borrar-guardia]');
   const directorio = evento.target.closest('[data-borrar-directorio]');
-  if (contacto && confirm('Eliminar contacto?')) await pedir(`/api/contactos/${contacto.dataset.borrarContacto}`, { method: 'DELETE' });
+  if (contacto && confirm('Eliminar funcionario?')) await pedir(`/api/funcionarios/${contacto.dataset.borrarContacto}`, { method: 'DELETE' });
   if (guardia && confirm('Eliminar guardia?')) await pedir(`/api/guardias/${guardia.dataset.borrarGuardia}`, { method: 'DELETE' });
   if (directorio && confirm('Eliminar registro?')) { const [campo, id] = directorio.dataset.borrarDirectorio.split(':'); await pedir(`/api/directorio/${campo}/${id}`, { method: 'DELETE' }); }
   if (contacto || guardia || directorio) await cargarModulo(estado.modulo);
