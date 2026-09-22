@@ -13,3 +13,6 @@ captura-*.png
 # Archivos temporales.
 *.tmp
 *.log
+
+# Configuracion local del NAS; contiene la contraseña de administrador.
+.env

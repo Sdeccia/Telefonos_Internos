@@ -9,5 +9,6 @@ services:
       HOST: 0.0.0.0
       PORT: 5173
       DIR_DATOS: /app/data
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Crea .env con ADMIN_PASSWORD}
     volumes:
       - ./data:/app/data

@@ -22,6 +22,8 @@ const ARCHIVO_DATOS = path.join(DIR_DATOS, 'telefonos.json');
 const PUERTO_INICIAL = Number(process.env.PORT || 5173);
 const HOST = process.env.HOST || '0.0.0.0';
 const ESTADOS = new Set(['activo', 'inactivo']);
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '';
+const sesionesAdmin = new Map();
 
 // Puerto real donde quedo escuchando (puede cambiar si el inicial estaba ocupado).
 let PUERTO_ACTIVO = PUERTO_INICIAL;
@@ -177,6 +179,28 @@ function json(res, status, cuerpo) {
 
 function error(res, status, mensaje) {
   json(res, status, { error: mensaje });
+}
+
+function cookies(req) {
+  return Object.fromEntries((req.headers.cookie || '').split(';').filter(Boolean).map((parte) => {
+    const i = parte.indexOf('=');
+    return [parte.slice(0, i).trim(), decodeURIComponent(parte.slice(i + 1).trim())];
+  }));
+}
+
+function esAdmin(req) {
+  const token = cookies(req).internos_admin;
+  const vence = token ? sesionesAdmin.get(token) : 0;
+  if (vence && vence < Date.now()) sesionesAdmin.delete(token);
+  return Boolean(token && vence && vence >= Date.now());
+}
+
+function cookieSesion(token, maxAge = 60 * 60 * 12) {
+  return `internos_admin=${encodeURIComponent(token)}; Max-Age=${maxAge}; HttpOnly; SameSite=Strict; Path=/`;
+}
+
+function respuestaAuth(res, estado) {
+  return json(res, 200, { configurado: Boolean(ADMIN_PASSWORD), autenticado: estado });
 }
 
 function responderHTML(res, html) {
@@ -391,6 +415,36 @@ function escaparCSV(v) {
 async function manejarAPI(req, res, url) {
   const partes = url.pathname.split('/').filter(Boolean); // ['api', 'extensiones', id]
   const metodo = req.method;
+
+  if (partes[1] === 'auth' && partes[2] === 'estado' && metodo === 'GET') {
+    return respuestaAuth(res, esAdmin(req));
+  }
+
+  if (partes[1] === 'auth' && partes[2] === 'login' && metodo === 'POST') {
+    const { password } = await leerCuerpo(req);
+    if (!ADMIN_PASSWORD) return error(res, 503, 'La cuenta administrador no esta configurada en el servidor.');
+    if (typeof password !== 'string' || password !== ADMIN_PASSWORD) {
+      return error(res, 401, 'Contraseña incorrecta.');
+    }
+    const token = crypto.randomUUID();
+    sesionesAdmin.set(token, Date.now() + 12 * 60 * 60 * 1000);
+    res.setHeader('Set-Cookie', cookieSesion(token));
+    return respuestaAuth(res, true);
+  }
+
+  if (partes[1] === 'auth' && partes[2] === 'logout' && metodo === 'POST') {
+    const token = cookies(req).internos_admin;
+    if (token) sesionesAdmin.delete(token);
+    res.setHeader('Set-Cookie', cookieSesion('', 0));
+    return respuestaAuth(res, false);
+  }
+
+  const modifica = metodo === 'POST' || metodo === 'PUT' || metodo === 'PATCH' || metodo === 'DELETE';
+  if (modifica && !esAdmin(req)) {
+    return error(res, 401, ADMIN_PASSWORD
+      ? 'Necesitas iniciar sesion como administrador para modificar datos.'
+      : 'La cuenta administrador no esta configurada en el servidor.');
+  }
 
   // GET /api/estado
   if (partes[1] === 'estado' && metodo === 'GET') {

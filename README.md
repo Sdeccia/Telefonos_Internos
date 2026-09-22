@@ -240,3 +240,24 @@ Para detenerlo:
 ```sh
 sudo docker-compose down
 ```
+
+### Contraseña de administrador
+
+La consulta es pública, pero crear, editar, eliminar, reorganizar y cambiar
+sectores requiere una sesión de administrador. En el NAS, crea el archivo local
+`.env` a partir de `.env.example` y define una contraseña fuerte:
+
+```sh
+cp .env.example .env
+vi .env
+```
+
+Con Docker, `docker-compose` lee ese archivo automáticamente. Sin Docker, usa
+los scripts `iniciar-nas.sh` y `detener-nas.sh`:
+
+```sh
+chmod +x iniciar-nas.sh detener-nas.sh
+./iniciar-nas.sh
+```
+
+El archivo `.env` nunca se versiona ni se debe publicar.

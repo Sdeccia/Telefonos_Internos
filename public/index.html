@@ -19,6 +19,7 @@
   </div>
   <div class="acciones-barra">
     <span class="guardado" id="guardado" hidden></span>
+    <button class="btn" id="btnAdmin" type="button">Administrador</button>
     <a class="btn" id="btnExportar" href="/api/export.csv" download>Exportar CSV</a>
     <a class="btn" id="btnImprimir" href="/imprimir" target="_blank" rel="noopener">Imprimir</a>
     <a class="btn" id="btnPdf" href="/api/imprimir.pdf">Descargar PDF</a>
@@ -170,6 +171,30 @@
       <div class="espacio"></div>
       <button class="btn" type="button" id="btnCerrarSectores2">Listo</button>
     </footer>
+  </div>
+</div>
+
+<div class="modal-fondo" id="modalAdmin" hidden>
+  <div class="modal modal-admin" role="dialog" aria-modal="true" aria-labelledby="tituloAdmin">
+    <form id="formAdmin">
+      <header class="modal-cab">
+        <h2 id="tituloAdmin">Acceso administrador</h2>
+        <button class="cerrar" type="button" id="btnCerrarAdmin" aria-label="Cerrar">&times;</button>
+      </header>
+      <div class="modal-cuerpo">
+        <p class="pista" id="estadoAdmin">La consulta es pública. Inicia sesión para modificar datos.</p>
+        <label>Contraseña
+          <input id="fPassword" type="password" autocomplete="current-password" required>
+        </label>
+        <p class="error" id="errorAdmin" hidden></p>
+      </div>
+      <footer class="modal-pie">
+        <div class="espacio"></div>
+        <button class="btn" type="button" id="btnCerrarAdmin2">Cancelar</button>
+        <button class="btn primario" type="submit" id="btnLogin">Entrar</button>
+        <button class="btn peligro" type="button" id="btnLogout" hidden>Cerrar sesión</button>
+      </footer>
+    </form>
   </div>
 </div>
 

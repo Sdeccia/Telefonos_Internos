@@ -22,6 +22,16 @@ const el = {
   btnImprimir: $('#btnImprimir'),
   btnPdf: $('#btnPdf'),
   btnSectores: $('#btnSectores'),
+  btnAdmin: $('#btnAdmin'),
+  modalAdmin: $('#modalAdmin'),
+  formAdmin: $('#formAdmin'),
+  fPassword: $('#fPassword'),
+  errorAdmin: $('#errorAdmin'),
+  estadoAdmin: $('#estadoAdmin'),
+  btnLogin: $('#btnLogin'),
+  btnLogout: $('#btnLogout'),
+  btnCerrarAdmin: $('#btnCerrarAdmin'),
+  btnCerrarAdmin2: $('#btnCerrarAdmin2'),
   modalSectores: $('#modalSectores'),
   btnCerrarSectores: $('#btnCerrarSectores'),
   btnCerrarSectores2: $('#btnCerrarSectores2'),
@@ -68,6 +78,7 @@ const estado = {
   colorEditando: null,
   arrastrando: null,
   expandidos: new Set(),
+  admin: false,
 };
 
 const POR_PAGINA = 5;
@@ -162,8 +173,49 @@ async function pedir(url, opciones = {}) {
   });
   const tipo = respuesta.headers.get('content-type') || '';
   const datos = tipo.includes('json') ? await respuesta.json() : await respuesta.text();
-  if (!respuesta.ok) throw new Error((datos && datos.error) || `Error ${respuesta.status}`);
+  if (!respuesta.ok) {
+    if (respuesta.status === 401) {
+      estado.admin = false;
+      actualizarAdmin();
+      abrirAdmin();
+    }
+    const error = new Error((datos && datos.error) || `Error ${respuesta.status}`);
+    error.status = respuesta.status;
+    throw error;
+  }
   return datos;
+}
+
+function abrirAdmin() {
+  el.errorAdmin.hidden = true;
+  el.fPassword.value = '';
+  el.modalAdmin.hidden = false;
+  el.fPassword.focus();
+}
+
+function cerrarAdmin() { el.modalAdmin.hidden = true; }
+
+function actualizarAdmin() {
+  el.btnAdmin.textContent = estado.admin ? 'Administrador (activo)' : 'Administrador';
+  el.btnAdmin.classList.toggle('primario', estado.admin);
+  el.estadoAdmin.textContent = estado.admin
+    ? 'Sesión activa. Puedes modificar los datos.'
+    : 'La consulta es pública. Inicia sesión para modificar datos.';
+  el.btnLogin.hidden = estado.admin;
+  el.fPassword.hidden = estado.admin;
+  el.btnLogout.hidden = !estado.admin;
+}
+
+async function cargarAuth() {
+  const r = await pedir('/api/auth/estado');
+  estado.admin = r.autenticado;
+  actualizarAdmin();
+}
+
+async function asegurarAdmin() {
+  if (estado.admin) return true;
+  abrirAdmin();
+  return false;
 }
 
 function parametros() {
@@ -909,6 +961,7 @@ el.cuerpoSectores.addEventListener('keydown', (evento) => {
 
 document.addEventListener('keydown', (evento) => {
   if (evento.key === 'Escape') {
+    if (!el.modalAdmin.hidden) { cerrarAdmin(); return; }
     if (!el.modalSectores.hidden) { cerrarSectores(); return; }
     if (!el.modal.hidden) { cerrarModal(); return; }
   }
@@ -929,7 +982,39 @@ el.btnOrganizar.addEventListener('click', organizar);
 el.form.addEventListener('submit', guardar);
 el.modal.addEventListener('click', (e) => { if (e.target === el.modal) cerrarModal(); });
 
-cargar({ conResumen: true }).catch((e) => {
+el.btnAdmin.addEventListener('click', abrirAdmin);
+el.btnCerrarAdmin.addEventListener('click', cerrarAdmin);
+el.btnCerrarAdmin2.addEventListener('click', cerrarAdmin);
+el.modalAdmin.addEventListener('click', (e) => { if (e.target === el.modalAdmin) cerrarAdmin(); });
+el.formAdmin.addEventListener('submit', async (evento) => {
+  evento.preventDefault();
+  el.errorAdmin.hidden = true;
+  el.btnLogin.disabled = true;
+  try {
+    await pedir('/api/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ password: el.fPassword.value }),
+    });
+    estado.admin = true;
+    actualizarAdmin();
+    cerrarAdmin();
+    aviso('Sesion de administrador iniciada.', 'ok');
+  } catch (e) {
+    el.errorAdmin.textContent = e.message;
+    el.errorAdmin.hidden = false;
+  } finally {
+    el.btnLogin.disabled = false;
+  }
+});
+el.btnLogout.addEventListener('click', async () => {
+  await pedir('/api/auth/logout', { method: 'POST' });
+  estado.admin = false;
+  actualizarAdmin();
+  cerrarAdmin();
+  aviso('Sesion de administrador cerrada.');
+});
+
+Promise.all([cargarAuth(), cargar({ conResumen: true })]).catch((e) => {
   el.subtitulo.textContent = 'Error al conectar con el servidor';
   aviso(e.message, 'mal');
 });
