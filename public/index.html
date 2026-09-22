@@ -17,16 +17,6 @@
       <p class="sub" id="subtitulo">Sistema Integrado de Guardias y Agenda</p>
     </div>
   </div>
-  <div class="acciones-barra">
-    <span class="guardado" id="guardado" hidden></span>
-    <button class="btn" id="btnAdmin" type="button">Administrador</button>
-    <a class="btn" id="btnExportar" href="/api/export.csv" download>Exportar CSV</a>
-    <a class="btn" id="btnImprimir" href="/imprimir" target="_blank" rel="noopener">Imprimir</a>
-    <a class="btn" id="btnPdf" href="/api/imprimir.pdf">Descargar PDF</a>
-    <button class="btn" id="btnSectores" type="button">Sectores</button>
-    <button class="btn" id="btnOrganizar" type="button">Organizar sectores</button>
-    <button class="btn primario" id="btnNuevo" type="button">+ Nuevo interno</button>
-  </div>
 </header>
 
 <nav class="modulos" id="modulos" aria-label="Modulos">
@@ -49,6 +39,17 @@
   <article class="tarjeta"><span class="valor" id="kSectores">0</span><span class="etiqueta">Sectores</span></article>
   <article class="tarjeta"><span class="valor" id="kSinSector">0</span><span class="etiqueta">Sin sector</span></article>
 </section>
+
+<div class="acciones-barra acciones-internos" id="accionesInternos">
+  <span class="guardado" id="guardado" hidden></span>
+  <button class="btn" id="btnAdmin" type="button">Acceso</button>
+  <a class="btn" id="btnExportar" href="/api/export.csv" download>Exportar CSV</a>
+  <a class="btn" id="btnImprimir" href="/imprimir" target="_blank" rel="noopener">Imprimir</a>
+  <a class="btn" id="btnPdf" href="/api/imprimir.pdf">Descargar PDF</a>
+  <button class="btn" id="btnSectores" type="button">Sectores</button>
+  <button class="btn" id="btnOrganizar" type="button">Organizar sectores</button>
+  <button class="btn primario" id="btnNuevo" type="button">+ Nuevo interno</button>
+</div>
 
 <section class="panel" id="panelDashboard">
   <div class="fila-controles">

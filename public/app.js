@@ -1,4 +1,4 @@
-/* Dashboard de internos telefonicos - cliente */
+/* Cliente de SIGA - Sistema Integrado de Guardias y Agenda */
 
 const $ = (sel) => document.querySelector(sel);
 
@@ -63,9 +63,12 @@ const el = {
   btnCancelar: $('#btnCancelar'),
   btnCerrar: $('#btnCerrar'),
   avisos: $('#avisos'),
+  fechaHoraActual: $('#fechaHoraActual'),
+  guardiasActivas: $('#guardiasActivas'),
   dashboardVista: $('#dashboardVista'),
   tarjetas: $('#tarjetas'),
   panelDashboard: $('#panelDashboard'),
+  accionesInternos: $('#accionesInternos'),
   moduloContactos: $('#moduloContactos'),
   moduloGuardias: $('#moduloGuardias'),
   moduloVisorGuardias: $('#moduloVisorGuardias'),
@@ -252,7 +255,27 @@ async function asegurarAdmin() {
   return false;
 }
 
-function puedePrivado() { return ['administrador', 'telefonista', 'rrhh'].includes(estado.rol); }
+function puedePrivado() { return ['administrador', 'telefonista'].includes(estado.rol); }
+
+function actualizarBarraEstado() {
+  const ahora = new Date();
+  el.fechaHoraActual.textContent = ahora.toLocaleString('es-UY', {
+    weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit', second: '2-digit',
+  });
+}
+
+function fechaLocalISO() {
+  const ahora = new Date();
+  const ajuste = ahora.getTimezoneOffset() * 60_000;
+  return new Date(ahora.getTime() - ajuste).toISOString().slice(0, 10);
+}
+
+async function cargarGuardiasActivas() {
+  const fecha = fechaLocalISO();
+  const r = await pedir(`/api/guardias/visor?fecha=${fecha}`);
+  el.guardiasActivas.textContent = r.guardias.length;
+}
 
 function cambiarModulo(nombre) {
   if (['funcionarios', 'guardias'].includes(nombre) && !puedePrivado()) {
@@ -263,6 +286,7 @@ function cambiarModulo(nombre) {
   el.dashboardVista.hidden = nombre !== 'dashboard';
   el.tarjetas.hidden = nombre !== 'dashboard';
   el.panelDashboard.hidden = nombre !== 'dashboard';
+  el.accionesInternos.hidden = nombre !== 'dashboard';
   [el.moduloContactos, el.moduloGuardias, el.moduloVisorGuardias, el.moduloFlores, el.moduloSalud].forEach((vista) => { vista.hidden = true; });
   const vista = { funcionarios: el.moduloContactos, guardias: el.moduloGuardias, 'visor-guardias': el.moduloVisorGuardias, flores: el.moduloFlores, salud: el.moduloSalud }[nombre];
   if (vista) vista.hidden = false;
@@ -979,6 +1003,7 @@ el.formGuardia.addEventListener('submit', async (evento) => {
     el.formGuardia.reset();
     el.guardiaFecha.value = new Date().toISOString().slice(0, 10);
     await cargarModulo('guardias');
+    await cargarGuardiasActivas();
   } catch (e) { aviso(e.message, 'mal'); }
 });
 document.addEventListener('click', async (evento) => {
@@ -1133,12 +1158,12 @@ el.formAdmin.addEventListener('submit', async (evento) => {
   el.errorAdmin.hidden = true;
   el.btnLogin.disabled = true;
   try {
-    await pedir('/api/auth/login', {
+    const auth = await pedir('/api/auth/login', {
       method: 'POST',
       body: JSON.stringify({ usuario: el.fUsuario.value, password: el.fPassword.value }),
     });
-    estado.rol = el.fUsuario.value;
-    estado.admin = estado.rol === 'administrador';
+    estado.rol = auth.rol;
+    estado.admin = auth.rol === 'administrador';
     actualizarAdmin();
     cerrarAdmin();
     aviso('Sesion de administrador iniciada.', 'ok');
@@ -1157,7 +1182,9 @@ el.btnLogout.addEventListener('click', async () => {
   aviso('Sesion de administrador cerrada.');
 });
 
-Promise.all([cargarAuth(), cargar({ conResumen: true })]).catch((e) => {
+actualizarBarraEstado();
+setInterval(actualizarBarraEstado, 1000);
+Promise.all([cargarAuth(), cargar({ conResumen: true }), cargarGuardiasActivas()]).catch((e) => {
   el.subtitulo.textContent = 'Error al conectar con el servidor';
   aviso(e.message, 'mal');
 });
