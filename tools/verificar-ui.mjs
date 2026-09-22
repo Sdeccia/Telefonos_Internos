@@ -164,7 +164,7 @@ async function main() {
     prepararEntornoAislado();
     servidorPrueba = spawn(process.execPath, ['server.mjs'], {
       cwd: DIR_PRUEBA,
-      env: { ...process.env, PORT: String(PUERTO_PRUEBA), HOST: '127.0.0.1' },
+      env: { ...process.env, PORT: String(PUERTO_PRUEBA), HOST: '127.0.0.1', ADMIN_PASSWORD: 'verificacion-admin' },
       stdio: 'ignore',
     });
     if (!(await esperarServidor())) throw new Error('la copia del servidor no arranco');
@@ -203,6 +203,13 @@ async function main() {
     });
     await cdp.enviar('Page.navigate', { url: BASE });
     await dormir(2500);
+
+    // Las mutaciones del sistema requieren una sesión: se usa una credencial
+    // temporal solo para la copia aislada de esta suite.
+    if (AISLADO) {
+      await cdp.evaluar("document.querySelector('#btnAdmin').click(); document.querySelector('#fUsuario').value='admin'; document.querySelector('#fPassword').value='verificacion-admin'; document.querySelector('#formAdmin').requestSubmit();");
+      await dormir(500);
+    }
 
     // 1. Carga y errores de consola
     const titulo = await cdp.evaluar('document.title');

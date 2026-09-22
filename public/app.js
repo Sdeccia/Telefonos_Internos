@@ -23,6 +23,7 @@ const el = {
   btnPdf: $('#btnPdf'),
   btnSectores: $('#btnSectores'),
   btnAdmin: $('#btnAdmin'),
+  fUsuario: $('#fUsuario'),
   modalAdmin: $('#modalAdmin'),
   formAdmin: $('#formAdmin'),
   fPassword: $('#fPassword'),
@@ -62,6 +63,23 @@ const el = {
   btnCancelar: $('#btnCancelar'),
   btnCerrar: $('#btnCerrar'),
   avisos: $('#avisos'),
+  dashboardVista: $('#dashboardVista'),
+  moduloContactos: $('#moduloContactos'),
+  moduloGuardias: $('#moduloGuardias'),
+  moduloFlores: $('#moduloFlores'),
+  moduloSalud: $('#moduloSalud'),
+  tablaContactos: $('#tablaContactos'),
+  tablaGuardias: $('#tablaGuardias'),
+  tablaFlores: $('#tablaFlores'),
+  tablaSalud: $('#tablaSalud'),
+  formGuardia: $('#formGuardia'),
+  exportarGuardias: $('#exportarGuardias'),
+  imprimirGuardias: $('#imprimirGuardias'),
+  guardiaFecha: $('#guardiaFecha'),
+  guardiaTurno: $('#guardiaTurno'),
+  guardiaRol: $('#guardiaRol'),
+  guardiaContacto: $('#guardiaContacto'),
+  guardiaNotas: $('#guardiaNotas'),
 };
 
 const estado = {
@@ -79,6 +97,12 @@ const estado = {
   arrastrando: null,
   expandidos: new Set(),
   admin: false,
+  rol: null,
+  modulo: 'dashboard',
+  contactos: [],
+  guardias: [],
+  flores: [],
+  salud: [],
 };
 
 const POR_PAGINA = 5;
@@ -196,7 +220,7 @@ function abrirAdmin() {
 function cerrarAdmin() { el.modalAdmin.hidden = true; }
 
 function actualizarAdmin() {
-  el.btnAdmin.textContent = estado.admin ? 'Administrador (activo)' : 'Administrador';
+  el.btnAdmin.textContent = estado.admin ? `${estado.rol} (activo)` : 'Acceso';
   el.btnAdmin.classList.toggle('primario', estado.admin);
   el.estadoAdmin.textContent = estado.admin
     ? 'Sesión activa. Puedes modificar los datos.'
@@ -204,11 +228,14 @@ function actualizarAdmin() {
   el.btnLogin.hidden = estado.admin;
   el.fPassword.hidden = estado.admin;
   el.btnLogout.hidden = !estado.admin;
+  document.querySelectorAll('[data-restringido]').forEach((b) => { b.hidden = !puedePrivado(); });
+  document.querySelectorAll('.solo-admin').forEach((b) => { b.hidden = !estado.admin; });
 }
 
 async function cargarAuth() {
   const r = await pedir('/api/auth/estado');
-  estado.admin = r.autenticado;
+  estado.rol = r.rol;
+  estado.admin = r.rol === 'administrador';
   actualizarAdmin();
 }
 
@@ -216,6 +243,75 @@ async function asegurarAdmin() {
   if (estado.admin) return true;
   abrirAdmin();
   return false;
+}
+
+function puedePrivado() { return estado.rol === 'administrador' || estado.rol === 'telefonista'; }
+
+function cambiarModulo(nombre) {
+  if (['contactos', 'guardias'].includes(nombre) && !puedePrivado()) {
+    abrirAdmin();
+    return;
+  }
+  estado.modulo = nombre;
+  el.dashboardVista.hidden = nombre !== 'dashboard';
+  [el.moduloContactos, el.moduloGuardias, el.moduloFlores, el.moduloSalud].forEach((vista) => { vista.hidden = true; });
+  const vista = { contactos: el.moduloContactos, guardias: el.moduloGuardias, flores: el.moduloFlores, salud: el.moduloSalud }[nombre];
+  if (vista) vista.hidden = false;
+  document.querySelectorAll('[data-modulo]').forEach((b) => b.classList.toggle('activo', b.dataset.modulo === nombre));
+  if (nombre !== 'dashboard') cargarModulo(nombre).catch((e) => aviso(e.message, 'mal'));
+}
+
+async function cargarModulo(nombre) {
+  if (nombre === 'contactos') {
+    const q = encodeURIComponent($('#buscarContactos').value || '');
+    estado.contactos = (await pedir(`/api/contactos?q=${q}`)).contactos;
+    el.tablaContactos.innerHTML = estado.contactos.map((c) => `<tr><td><strong>${escapar(c.nombre)}</strong><br><small>C.I. ${escapar(c.ci)}</small></td><td>${escapar(c.rol)}<br>${escapar(c.funcion)}</td><td>${escapar(c.celularPrincipal)}</td><td>${escapar(c.celularSecundario)}</td><td>${escapar(c.disponibilidad)} <button class="btn-mini peligro" data-borrar-contacto="${c.id}">Eliminar</button></td></tr>`).join('');
+  }
+  if (nombre === 'guardias') {
+    const fecha = el.guardiaFecha.value || new Date().toISOString().slice(0, 10);
+    el.guardiaFecha.value = fecha;
+    el.exportarGuardias.href = `/api/guardias/export.csv?fecha=${encodeURIComponent(fecha)}`;
+    el.imprimirGuardias.href = `/guardias/imprimir?fecha=${encodeURIComponent(fecha)}`;
+    const [guardias, contactos] = await Promise.all([pedir(`/api/guardias?fecha=${fecha}`), pedir('/api/contactos')]);
+    estado.guardias = guardias.guardias;
+    estado.contactos = contactos.contactos;
+    el.guardiaContacto.innerHTML = '<option value="">Funcionario</option>' + estado.contactos.map((c) => `<option value="${c.id}">${escapar(c.nombre)} - ${escapar(c.celularPrincipal)}</option>`).join('');
+    el.tablaGuardias.innerHTML = estado.guardias.map((g) => `<tr><td>${escapar(g.fecha)}</td><td>${escapar(g.turno)}</td><td>${escapar(g.rolGuardia)}</td><td>${escapar(g.contactoNombre)}</td><td><a href="tel:${escapar(g.telefono)}">${escapar(g.telefono)}</a></td><td><button class="btn-mini peligro" data-borrar-guardia="${g.id}">Eliminar</button></td></tr>`).join('');
+  }
+  if (nombre === 'flores') {
+    const q = encodeURIComponent($('#buscarFlores').value || '');
+    const categoria = encodeURIComponent($('#filtroFlores').value || '');
+    const r = await pedir(`/api/directorio/flores?q=${q}`);
+    estado.flores = r.registros.filter((x) => !categoria || x.categoria === categoria);
+    el.tablaFlores.innerHTML = estado.flores.map((x) => `<tr><td>${escapar(x.categoria)}</td><td>${escapar(x.nombre)}</td><td><a href="tel:${escapar(x.telefono)}">${escapar(x.telefono)}</a></td><td>${escapar(x.servicio)}</td><td>${escapar(x.localidad)}</td><td>${estado.admin ? `<button class="btn-mini peligro" data-borrar-directorio="flores:${x.id}">Eliminar</button>` : ''}</td></tr>`).join('');
+  }
+  if (nombre === 'salud') {
+    const p = new URLSearchParams({ q: $('#buscarSalud').value || '', departamento: $('#filtroDepartamento').value || '', tipo: $('#filtroTipo').value || '' });
+    estado.salud = (await pedir(`/api/directorio/salud?${p}`)).registros;
+    el.tablaSalud.innerHTML = estado.salud.map((x) => `<tr><td>${escapar(x.departamento)}</td><td>${escapar(x.tipoCentro)}</td><td>${escapar(x.nombre)}</td><td>${escapar(x.localidad)}</td><td>${escapar(x.telefonoCentral)}</td><td>${escapar(x.servicio)}</td><td>${estado.admin ? `<button class="btn-mini peligro" data-borrar-directorio="salud:${x.id}">Eliminar</button>` : ''}</td></tr>`).join('');
+  }
+}
+
+async function nuevoContacto() {
+  const nombre = prompt('Nombre completo:');
+  if (!nombre) return;
+  const celularPrincipal = prompt('Celular principal:');
+  if (!celularPrincipal) return;
+  await pedir('/api/contactos', { method: 'POST', body: JSON.stringify({ nombre, celularPrincipal, ci: prompt('C.I. (opcional):') || '', rol: prompt('Rol / especialidad:') || '', funcion: prompt('Funcion:') || '', celularSecundario: prompt('Celular secundario (opcional):') || '', disponibilidad: prompt('Disponibilidad / observaciones:') || '' }) });
+  aviso('Contacto creado.', 'ok');
+  await cargarModulo('contactos');
+}
+
+async function nuevoDirectorio(campo) {
+  const nombre = prompt('Nombre:');
+  if (!nombre) return;
+  const telefono = prompt('Telefono:') || '';
+  const registro = campo === 'flores'
+    ? { nombre, telefono, categoria: prompt('Categoria (Emergencias, Salud, Institucionales / Fuerzas Vivas, Servicios):') || 'Servicios', servicio: prompt('Servicio:') || '', localidad: prompt('Localidad:') || 'Flores', notas: '' }
+    : { nombre, departamento: prompt('Departamento:') || '', tipoCentro: prompt('Tipo de centro:') || '', localidad: prompt('Ciudad / localidad:') || '', telefonoCentral: telefono, servicio: prompt('Modulo / servicio:') || '' };
+  await pedir(`/api/directorio/${campo}`, { method: 'POST', body: JSON.stringify(registro) });
+  aviso('Registro agregado.', 'ok');
+  await cargarModulo(campo);
 }
 
 function parametros() {
@@ -835,7 +931,7 @@ el.btnLimpiarFiltros.addEventListener('click', () => {
   cargar().catch((e) => aviso(e.message, 'mal'));
 });
 
-document.querySelectorAll('.tab').forEach((tab) => {
+document.querySelectorAll('.tabs .tab').forEach((tab) => {
   tab.addEventListener('click', () => {
     document.querySelectorAll('.tab').forEach((t) => {
       const activo = t === tab;
@@ -847,6 +943,34 @@ document.querySelectorAll('.tab').forEach((tab) => {
     el.vistaLista.hidden = estado.vista !== 'lista';
     pintar();
   });
+});
+
+document.querySelectorAll('[data-modulo]').forEach((boton) => boton.addEventListener('click', () => cambiarModulo(boton.dataset.modulo)));
+$('#btnNuevoContacto').addEventListener('click', nuevoContacto);
+document.querySelectorAll('[data-directorio]').forEach((b) => b.addEventListener('click', () => nuevoDirectorio(b.dataset.directorio)));
+['buscarContactos', 'buscarFlores', 'buscarSalud', 'filtroFlores', 'filtroDepartamento', 'filtroTipo'].forEach((id) => {
+  document.getElementById(id).addEventListener('input', () => cargarModulo(estado.modulo).catch((e) => aviso(e.message, 'mal')));
+  document.getElementById(id).addEventListener('change', () => cargarModulo(estado.modulo).catch((e) => aviso(e.message, 'mal')));
+});
+el.guardiaFecha.addEventListener('change', () => cargarModulo('guardias').catch((e) => aviso(e.message, 'mal')));
+el.formGuardia.addEventListener('submit', async (evento) => {
+  evento.preventDefault();
+  try {
+    await pedir('/api/guardias', { method: 'POST', body: JSON.stringify({ fecha: el.guardiaFecha.value, turno: el.guardiaTurno.value, rolGuardia: el.guardiaRol.value, contactoId: el.guardiaContacto.value, notas: el.guardiaNotas.value }) });
+    aviso('Guardia asignada.', 'ok');
+    el.formGuardia.reset();
+    el.guardiaFecha.value = new Date().toISOString().slice(0, 10);
+    await cargarModulo('guardias');
+  } catch (e) { aviso(e.message, 'mal'); }
+});
+document.addEventListener('click', async (evento) => {
+  const contacto = evento.target.closest('[data-borrar-contacto]');
+  const guardia = evento.target.closest('[data-borrar-guardia]');
+  const directorio = evento.target.closest('[data-borrar-directorio]');
+  if (contacto && confirm('Eliminar contacto?')) await pedir(`/api/contactos/${contacto.dataset.borrarContacto}`, { method: 'DELETE' });
+  if (guardia && confirm('Eliminar guardia?')) await pedir(`/api/guardias/${guardia.dataset.borrarGuardia}`, { method: 'DELETE' });
+  if (directorio && confirm('Eliminar registro?')) { const [campo, id] = directorio.dataset.borrarDirectorio.split(':'); await pedir(`/api/directorio/${campo}/${id}`, { method: 'DELETE' }); }
+  if (contacto || guardia || directorio) await cargarModulo(estado.modulo);
 });
 
 // Clic en una fila -> editar; en "ver mas" -> expandir.
@@ -993,9 +1117,10 @@ el.formAdmin.addEventListener('submit', async (evento) => {
   try {
     await pedir('/api/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ password: el.fPassword.value }),
+      body: JSON.stringify({ usuario: el.fUsuario.value, password: el.fPassword.value }),
     });
-    estado.admin = true;
+    estado.rol = el.fUsuario.value;
+    estado.admin = estado.rol === 'administrador';
     actualizarAdmin();
     cerrarAdmin();
     aviso('Sesion de administrador iniciada.', 'ok');

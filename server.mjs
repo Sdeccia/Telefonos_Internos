@@ -23,6 +23,7 @@ const PUERTO_INICIAL = Number(process.env.PORT || 5173);
 const HOST = process.env.HOST || '0.0.0.0';
 const ESTADOS = new Set(['activo', 'inactivo']);
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '';
+const TELEFONISTA_PASSWORD = process.env.TELEFONISTA_PASSWORD || '';
 const sesionesAdmin = new Map();
 
 // Puerto real donde quedo escuchando (puede cambiar si el inicial estaba ocupado).
@@ -45,6 +46,7 @@ async function cargarStore() {
   if (typeof store.version !== 'number') store.version = 1;
   if (!Array.isArray(store.sectores)) store.sectores = [];
   if (!store.colores || typeof store.colores !== 'object') store.colores = {};
+  migrarModulos(store);
   // Migracion: el catalogo de sectores se completa con los que ya usan los internos.
   for (const e of store.extensiones) {
     if (e.sector && !store.sectores.includes(e.sector)) store.sectores.push(e.sector);
@@ -55,6 +57,35 @@ async function cargarStore() {
     asegurarSector(store, SIN_ASIGNAR);
   }
   return store;
+}
+
+function migrarModulos(s) {
+  if (!Array.isArray(s.usuarios)) s.usuarios = [];
+  if (!s.usuarios.some((u) => u.rol === 'administrador')) {
+    s.usuarios.push({ id: 'rol-administrador', usuario: 'admin', rol: 'administrador', activo: true });
+  }
+  if (!Array.isArray(s.contactos_privados)) s.contactos_privados = [];
+  if (!Array.isArray(s.guardias)) s.guardias = [];
+  if (!Array.isArray(s.directorio_flores)) s.directorio_flores = datosFloresIniciales();
+  if (!Array.isArray(s.directorio_nacional_salud)) s.directorio_nacional_salud = [];
+}
+
+function datosFloresIniciales() {
+  return [
+    { id: crypto.randomUUID(), categoria: 'Emergencias', nombre: 'Emergencias 911', telefono: '911', servicio: 'Emergencias', localidad: 'Trinidad', notas: '' },
+    { id: crypto.randomUUID(), categoria: 'Emergencias', nombre: 'Bomberos', telefono: '104', servicio: 'Emergencias', localidad: 'Trinidad', notas: '' },
+    { id: crypto.randomUUID(), categoria: 'Emergencias', nombre: 'ASSE / SAME 105', telefono: '105', servicio: 'Emergencias móviles', localidad: 'Trinidad', notas: '' },
+    { id: crypto.randomUUID(), categoria: 'Salud', nombre: 'COMEPA', telefono: '', servicio: 'Central / atención al usuario', localidad: 'Trinidad', notas: 'Completar teléfono local.' },
+    { id: crypto.randomUUID(), categoria: 'Salud', nombre: 'AMEDRIN', telefono: '', servicio: 'Central / atención al usuario', localidad: 'Trinidad', notas: 'Completar teléfono local.' },
+    { id: crypto.randomUUID(), categoria: 'Salud', nombre: 'COMEF', telefono: '', servicio: 'Central / atención al usuario', localidad: 'Trinidad', notas: 'Completar teléfono local.' },
+    { id: crypto.randomUUID(), categoria: 'Institucionales / Fuerzas Vivas', nombre: 'Intendencia de Flores', telefono: '', servicio: 'Central', localidad: 'Trinidad', notas: 'Completar teléfono local.' },
+    { id: crypto.randomUUID(), categoria: 'Institucionales / Fuerzas Vivas', nombre: 'Jefatura de Policía de Flores', telefono: '', servicio: 'Central', localidad: 'Trinidad', notas: 'Completar teléfono local.' },
+    { id: crypto.randomUUID(), categoria: 'Institucionales / Fuerzas Vivas', nombre: 'Batallón de Infantería', telefono: '', servicio: 'Central', localidad: 'Trinidad', notas: 'Completar teléfono local.' },
+    { id: crypto.randomUUID(), categoria: 'Institucionales / Fuerzas Vivas', nombre: 'Junta Departamental de Flores', telefono: '', servicio: 'Central', localidad: 'Trinidad', notas: 'Completar teléfono local.' },
+    { id: crypto.randomUUID(), categoria: 'Servicios', nombre: 'UTE', telefono: '0800 1930', servicio: 'Atención general', localidad: 'Flores', notas: '' },
+    { id: crypto.randomUUID(), categoria: 'Servicios', nombre: 'OSE', telefono: '0800 1871', servicio: 'Atención general', localidad: 'Flores', notas: '' },
+    { id: crypto.randomUUID(), categoria: 'Servicios', nombre: 'ANTEL', telefono: '123', servicio: 'Atención general', localidad: 'Flores', notas: '' },
+  ];
 }
 
 const esColor = (v) => /^#[0-9a-fA-F]{6}$/.test(String(v || ''));
@@ -188,11 +219,20 @@ function cookies(req) {
   }));
 }
 
-function esAdmin(req) {
+function rolSesion(req) {
   const token = cookies(req).internos_admin;
-  const vence = token ? sesionesAdmin.get(token) : 0;
+  const sesion = token ? sesionesAdmin.get(token) : null;
+  const vence = sesion?.vence || 0;
   if (vence && vence < Date.now()) sesionesAdmin.delete(token);
-  return Boolean(token && vence && vence >= Date.now());
+  return token && vence >= Date.now() ? sesion.rol : null;
+}
+
+function esAdmin(req) {
+  return rolSesion(req) === 'administrador';
+}
+
+function esTelefonista(req) {
+  return ['administrador', 'telefonista'].includes(rolSesion(req));
 }
 
 function cookieSesion(token, maxAge = 60 * 60 * 12) {
@@ -200,7 +240,12 @@ function cookieSesion(token, maxAge = 60 * 60 * 12) {
 }
 
 function respuestaAuth(res, estado) {
-  return json(res, 200, { configurado: Boolean(ADMIN_PASSWORD), autenticado: estado });
+  return json(res, 200, {
+    configurado: Boolean(ADMIN_PASSWORD),
+    telefonistaConfigurado: Boolean(TELEFONISTA_PASSWORD),
+    autenticado: Boolean(estado),
+    rol: estado || null,
+  });
 }
 
 function responderHTML(res, html) {
@@ -210,6 +255,10 @@ function responderHTML(res, html) {
     'Cache-Control': 'no-store',
   });
   res.end(html);
+}
+
+function escaparHTML(v) {
+  return String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
 async function leerCuerpo(req, limite = 2 * 1024 * 1024) {
@@ -421,15 +470,17 @@ async function manejarAPI(req, res, url) {
   }
 
   if (partes[1] === 'auth' && partes[2] === 'login' && metodo === 'POST') {
-    const { password } = await leerCuerpo(req);
-    if (!ADMIN_PASSWORD) return error(res, 503, 'La cuenta administrador no esta configurada en el servidor.');
-    if (typeof password !== 'string' || password !== ADMIN_PASSWORD) {
+    const { password, usuario = 'admin' } = await leerCuerpo(req);
+    const rol = usuario === 'telefonista' ? 'telefonista' : 'administrador';
+    const clave = rol === 'telefonista' ? TELEFONISTA_PASSWORD : ADMIN_PASSWORD;
+    if (!clave) return error(res, 503, `La cuenta ${rol} no esta configurada en el servidor.`);
+    if (typeof password !== 'string' || password !== clave) {
       return error(res, 401, 'Contraseña incorrecta.');
     }
     const token = crypto.randomUUID();
-    sesionesAdmin.set(token, Date.now() + 12 * 60 * 60 * 1000);
+    sesionesAdmin.set(token, { rol, vence: Date.now() + 12 * 60 * 60 * 1000 });
     res.setHeader('Set-Cookie', cookieSesion(token));
-    return respuestaAuth(res, true);
+    return respuestaAuth(res, rol);
   }
 
   if (partes[1] === 'auth' && partes[2] === 'logout' && metodo === 'POST') {
@@ -439,11 +490,110 @@ async function manejarAPI(req, res, url) {
     return respuestaAuth(res, false);
   }
 
-  const modifica = metodo === 'POST' || metodo === 'PUT' || metodo === 'PATCH' || metodo === 'DELETE';
-  if (modifica && !esAdmin(req)) {
+  const modifica = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(metodo);
+  const recursoTelefonista = ['contactos', 'guardias'].includes(partes[1]);
+  if (recursoTelefonista && !esTelefonista(req)) {
+    return error(res, 401, 'Este modulo requiere una sesion de telefonista o administrador.');
+  }
+  if (modifica && !esAdmin(req) && !recursoTelefonista) {
     return error(res, 401, ADMIN_PASSWORD
       ? 'Necesitas iniciar sesion como administrador para modificar datos.'
       : 'La cuenta administrador no esta configurada en el servidor.');
+  }
+
+  if (partes[1] === 'contactos') {
+    const consulta = (url.searchParams.get('q') || '').toLocaleLowerCase();
+    if (metodo === 'GET' && partes.length === 2) {
+      const contactos = store.contactos_privados.filter((c) => !consulta
+        || `${c.nombre} ${c.ci} ${c.rol} ${c.funcion}`.toLocaleLowerCase().includes(consulta));
+      return json(res, 200, { contactos });
+    }
+    if (metodo === 'POST' && partes.length === 2) {
+      const cuerpo = await leerCuerpo(req);
+      if (!limpiar(cuerpo.nombre) || !limpiar(cuerpo.celularPrincipal)) {
+        throw new ErrorDatos('Nombre y celular principal son obligatorios.');
+      }
+      const contacto = { id: crypto.randomUUID(), nombre: limpiar(cuerpo.nombre), ci: limpiar(cuerpo.ci), rol: limpiar(cuerpo.rol), funcion: limpiar(cuerpo.funcion), celularPrincipal: limpiar(cuerpo.celularPrincipal), celularSecundario: limpiar(cuerpo.celularSecundario), disponibilidad: limpiar(cuerpo.disponibilidad) };
+      await mutar((s) => { s.contactos_privados.push(contacto); return contacto; });
+      return json(res, 201, { contacto });
+    }
+    if (partes.length === 3 && ['PUT', 'PATCH'].includes(metodo)) {
+      const id = decodeURIComponent(partes[2]);
+      const cuerpo = await leerCuerpo(req);
+      const actualizado = await mutar((s) => {
+        const contacto = s.contactos_privados.find((c) => c.id === id);
+        if (!contacto) return null;
+        Object.assign(contacto, cuerpo, { id, nombre: limpiar(cuerpo.nombre ?? contacto.nombre) });
+        return contacto;
+      });
+      if (!actualizado) return error(res, 404, 'Contacto no encontrado.');
+      return json(res, 200, { contacto: actualizado });
+    }
+    if (partes.length === 3 && metodo === 'DELETE') {
+      const id = decodeURIComponent(partes[2]);
+      const antes = store.contactos_privados.length;
+      await mutar((s) => { s.contactos_privados = s.contactos_privados.filter((c) => c.id !== id); return s.contactos_privados.length !== antes; });
+      return json(res, 200, { eliminado: id });
+    }
+  }
+
+  if (partes[1] === 'guardias') {
+    if (metodo === 'GET' && partes[2] === 'export.csv') {
+      const fecha = url.searchParams.get('fecha') || '';
+      const lista = store.guardias.filter((g) => !fecha || g.fecha === fecha);
+      const lineas = ['Fecha,Turno,Rol,Funcionario,Telefono,Notas', ...lista.map((g) => [g.fecha, g.turno, g.rolGuardia, g.contactoNombre, g.telefono, g.notas].map(escaparCSV).join(','))];
+      const texto = '\uFEFF' + lineas.join('\r\n') + '\r\n';
+      res.writeHead(200, { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': 'attachment; filename="guardias.csv"', 'Content-Length': Buffer.byteLength(texto) });
+      return res.end(texto);
+    }
+    if (metodo === 'GET' && partes.length === 2) {
+      const fecha = url.searchParams.get('fecha') || '';
+      const guardias = store.guardias.filter((g) => !fecha || g.fecha === fecha).sort((a, b) => `${a.fecha}${a.turno}`.localeCompare(`${b.fecha}${b.turno}`));
+      return json(res, 200, { guardias });
+    }
+    if (metodo === 'POST' && partes.length === 2) {
+      const cuerpo = await leerCuerpo(req);
+      if (!limpiar(cuerpo.fecha) || !limpiar(cuerpo.turno) || !limpiar(cuerpo.rolGuardia) || !limpiar(cuerpo.contactoId)) throw new ErrorDatos('Fecha, turno, rol y funcionario son obligatorios.');
+      const contacto = store.contactos_privados.find((c) => c.id === cuerpo.contactoId);
+      if (!contacto) throw new ErrorDatos('El contacto seleccionado no existe.');
+      const guardia = { id: crypto.randomUUID(), fecha: limpiar(cuerpo.fecha), turno: limpiar(cuerpo.turno), rolGuardia: limpiar(cuerpo.rolGuardia), contactoId: contacto.id, contactoNombre: contacto.nombre, telefono: contacto.celularPrincipal, notas: limpiar(cuerpo.notas) };
+      await mutar((s) => { s.guardias.push(guardia); return guardia; });
+      return json(res, 201, { guardia });
+    }
+    if (partes.length === 3 && metodo === 'DELETE') {
+      const id = decodeURIComponent(partes[2]);
+      await mutar((s) => { s.guardias = s.guardias.filter((g) => g.id !== id); return true; });
+      return json(res, 200, { eliminado: id });
+    }
+  }
+
+  if (partes[1] === 'directorio' && ['flores', 'salud'].includes(partes[2])) {
+    const campo = partes[2] === 'flores' ? 'directorio_flores' : 'directorio_nacional_salud';
+    if (metodo === 'GET' && partes.length === 3) {
+      const q = (url.searchParams.get('q') || '').toLocaleLowerCase();
+      const departamento = url.searchParams.get('departamento') || '';
+      const tipo = url.searchParams.get('tipo') || '';
+      const registros = store[campo].filter((r) => (!q || JSON.stringify(r).toLocaleLowerCase().includes(q)) && (!departamento || r.departamento === departamento) && (!tipo || r.tipoCentro === tipo));
+      return json(res, 200, { registros });
+    }
+    if (metodo === 'POST' && partes.length === 3) {
+      const cuerpo = await leerCuerpo(req);
+      const registro = { id: crypto.randomUUID(), ...cuerpo };
+      await mutar((s) => { s[campo].push(registro); return registro; });
+      return json(res, 201, { registro });
+    }
+    if (partes.length === 4 && ['PUT', 'PATCH'].includes(metodo)) {
+      const id = decodeURIComponent(partes[3]);
+      const cuerpo = await leerCuerpo(req);
+      const registro = await mutar((s) => { const actual = s[campo].find((r) => r.id === id); if (!actual) return null; Object.assign(actual, cuerpo, { id }); return actual; });
+      if (!registro) return error(res, 404, 'Registro no encontrado.');
+      return json(res, 200, { registro });
+    }
+    if (partes.length === 4 && metodo === 'DELETE') {
+      const id = decodeURIComponent(partes[3]);
+      await mutar((s) => { s[campo] = s[campo].filter((r) => r.id !== id); return true; });
+      return json(res, 200, { eliminado: id });
+    }
   }
 
   // GET /api/estado
@@ -792,6 +942,15 @@ const servidor = http.createServer(async (req, res) => {
         consulta: url.searchParams.toString(),
       });
       return responderHTML(res, html);
+    }
+
+    if (url.pathname === '/guardias/imprimir') {
+      await cargarStore();
+      if (!esTelefonista(req)) return error(res, 401, 'Necesitas una sesion de telefonista o administrador.');
+      const fecha = url.searchParams.get('fecha') || new Date().toISOString().slice(0, 10);
+      const guardias = store.guardias.filter((g) => g.fecha === fecha);
+      const filas = guardias.map((g) => `<tr><td>${escaparHTML(g.turno)}</td><td>${escaparHTML(g.rolGuardia)}</td><td>${escaparHTML(g.contactoNombre)}</td><td>${escaparHTML(g.telefono)}</td><td>${escaparHTML(g.notas)}</td></tr>`).join('');
+      return responderHTML(res, `<!doctype html><html lang="es"><meta charset="utf-8"><title>Guardias ${escaparHTML(fecha)}</title><style>body{font:14px Arial;color:#172033;margin:32px}h1{font-size:22px}table{width:100%;border-collapse:collapse}th,td{padding:9px;border:1px solid #ccd3dd;text-align:left}@media print{button{display:none}}</style><h1>Guardia del día: ${escaparHTML(fecha)}</h1><button onclick="print()">Imprimir / Guardar PDF</button><table><thead><tr><th>Turno</th><th>Rol</th><th>Funcionario</th><th>Telefono</th><th>Notas</th></tr></thead><tbody>${filas || '<tr><td colspan="5">No hay guardias asignadas.</td></tr>'}</tbody></table></html>`);
     }
 
     if (url.pathname.startsWith('/api/')) {

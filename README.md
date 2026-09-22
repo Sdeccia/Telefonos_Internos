@@ -260,4 +260,7 @@ chmod +x iniciar-nas.sh detener-nas.sh
 ./iniciar-nas.sh
 ```
 
-El archivo `.env` nunca se versiona ni se debe publicar.
+El archivo `.env` nunca se versiona ni se debe publicar. También puedes definir
+`TELEFONISTA_PASSWORD` para habilitar el rol telefonista: puede gestionar
+contactos personales y guardias, pero no modificar el directorio general ni la
+configuración de internos.

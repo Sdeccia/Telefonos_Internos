@@ -182,6 +182,20 @@ select:focus { outline: 2px solid var(--acento-suave); border-color: var(--acent
   font-weight: 600;
 }
 
+.modulos { display: flex; gap: 6px; flex-wrap: wrap; max-width: 1380px; margin: 0 auto; padding: 12px 22px 0; border-bottom: 1px solid var(--borde); }
+.modulo-vista { max-width: 1380px; margin: 20px auto; padding: 0 22px; }
+.modulo-cab { display: flex; justify-content: space-between; align-items: start; gap: 16px; margin-bottom: 18px; }
+.modulo-cab h2 { margin: 0 0 5px; font-size: 22px; }
+.modulo-cab p { margin: 0; color: var(--texto-suave); }
+.form-modulo { display: grid; grid-template-columns: repeat(5, minmax(120px, 1fr)) auto; gap: 8px; margin-bottom: 16px; }
+.campo-modulo, .form-modulo input, .form-modulo select { min-height: 38px; border: 1px solid var(--borde); border-radius: 6px; padding: 8px 10px; background: white; color: var(--texto); }
+.modal-admin { width: min(460px, 100%); }
+
+@media (max-width: 900px) {
+  .form-modulo { grid-template-columns: repeat(2, minmax(120px, 1fr)); }
+  .form-modulo .btn { grid-column: 1 / -1; }
+}
+
 /* ----------------------------------------------------------- rejilla sectores */
 .rejilla {
   display: grid;
