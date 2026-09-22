@@ -490,6 +490,19 @@ async function manejarAPI(req, res, url) {
     return respuestaAuth(res, false);
   }
 
+  // Visor público: solo lectura y únicamente los datos necesarios para ubicar
+  // al funcionario de guardia. La gestión completa sigue siendo privada.
+  if (partes[1] === 'guardias' && partes[2] === 'visor' && metodo === 'GET') {
+    const fecha = url.searchParams.get('fecha') || new Date().toISOString().slice(0, 10);
+    const guardias = store.guardias
+      .filter((g) => g.fecha === fecha)
+      .sort((a, b) => `${a.turno}${a.rolGuardia}`.localeCompare(`${b.turno}${b.rolGuardia}`))
+      .map(({ id, fecha: fechaGuardia, turno, rolGuardia, contactoNombre, telefono }) => ({
+        id, fecha: fechaGuardia, turno, rolGuardia, contactoNombre, telefono,
+      }));
+    return json(res, 200, { fecha, guardias });
+  }
+
   const modifica = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(metodo);
   const recursoTelefonista = ['contactos', 'guardias'].includes(partes[1]);
   if (recursoTelefonista && !esTelefonista(req)) {
@@ -951,6 +964,14 @@ const servidor = http.createServer(async (req, res) => {
       const guardias = store.guardias.filter((g) => g.fecha === fecha);
       const filas = guardias.map((g) => `<tr><td>${escaparHTML(g.turno)}</td><td>${escaparHTML(g.rolGuardia)}</td><td>${escaparHTML(g.contactoNombre)}</td><td>${escaparHTML(g.telefono)}</td><td>${escaparHTML(g.notas)}</td></tr>`).join('');
       return responderHTML(res, `<!doctype html><html lang="es"><meta charset="utf-8"><title>Guardias ${escaparHTML(fecha)}</title><style>body{font:14px Arial;color:#172033;margin:32px}h1{font-size:22px}table{width:100%;border-collapse:collapse}th,td{padding:9px;border:1px solid #ccd3dd;text-align:left}@media print{button{display:none}}</style><h1>Guardia del día: ${escaparHTML(fecha)}</h1><button onclick="print()">Imprimir / Guardar PDF</button><table><thead><tr><th>Turno</th><th>Rol</th><th>Funcionario</th><th>Telefono</th><th>Notas</th></tr></thead><tbody>${filas || '<tr><td colspan="5">No hay guardias asignadas.</td></tr>'}</tbody></table></html>`);
+    }
+
+    if (url.pathname === '/guardias/visor') {
+      await cargarStore();
+      const fecha = url.searchParams.get('fecha') || new Date().toISOString().slice(0, 10);
+      const guardias = store.guardias.filter((g) => g.fecha === fecha);
+      const filas = guardias.map((g) => `<tr><td>${escaparHTML(g.turno)}</td><td>${escaparHTML(g.rolGuardia)}</td><td>${escaparHTML(g.contactoNombre)}</td><td>${escaparHTML(g.telefono)}</td></tr>`).join('');
+      return responderHTML(res, `<!doctype html><html lang="es"><meta charset="utf-8"><title>Guardias ${escaparHTML(fecha)}</title><style>body{font:14px Arial;color:#172033;margin:32px}h1{font-size:22px}table{width:100%;border-collapse:collapse}th,td{padding:9px;border:1px solid #ccd3dd;text-align:left}@media print{button{display:none}}</style><h1>Guardias del día: ${escaparHTML(fecha)}</h1><button onclick="print()">Imprimir / Guardar PDF</button><table><thead><tr><th>Turno</th><th>Rol</th><th>Funcionario</th><th>Telefono directo</th></tr></thead><tbody>${filas || '<tr><td colspan="4">No hay guardias cargadas.</td></tr>'}</tbody></table></html>`);
     }
 
     if (url.pathname.startsWith('/api/')) {

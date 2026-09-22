@@ -66,10 +66,15 @@ const el = {
   dashboardVista: $('#dashboardVista'),
   moduloContactos: $('#moduloContactos'),
   moduloGuardias: $('#moduloGuardias'),
+  moduloVisorGuardias: $('#moduloVisorGuardias'),
   moduloFlores: $('#moduloFlores'),
   moduloSalud: $('#moduloSalud'),
   tablaContactos: $('#tablaContactos'),
   tablaGuardias: $('#tablaGuardias'),
+  tablaVisorGuardias: $('#tablaVisorGuardias'),
+  visorGuardiasFecha: $('#visorGuardiaFecha'),
+  imprimirVisorGuardias: $('#imprimirVisorGuardias'),
+  visorGuardiasVacio: $('#visorGuardiasVacio'),
   tablaFlores: $('#tablaFlores'),
   tablaSalud: $('#tablaSalud'),
   formGuardia: $('#formGuardia'),
@@ -254,8 +259,8 @@ function cambiarModulo(nombre) {
   }
   estado.modulo = nombre;
   el.dashboardVista.hidden = nombre !== 'dashboard';
-  [el.moduloContactos, el.moduloGuardias, el.moduloFlores, el.moduloSalud].forEach((vista) => { vista.hidden = true; });
-  const vista = { contactos: el.moduloContactos, guardias: el.moduloGuardias, flores: el.moduloFlores, salud: el.moduloSalud }[nombre];
+  [el.moduloContactos, el.moduloGuardias, el.moduloVisorGuardias, el.moduloFlores, el.moduloSalud].forEach((vista) => { vista.hidden = true; });
+  const vista = { contactos: el.moduloContactos, guardias: el.moduloGuardias, 'visor-guardias': el.moduloVisorGuardias, flores: el.moduloFlores, salud: el.moduloSalud }[nombre];
   if (vista) vista.hidden = false;
   document.querySelectorAll('[data-modulo]').forEach((b) => b.classList.toggle('activo', b.dataset.modulo === nombre));
   if (nombre !== 'dashboard') cargarModulo(nombre).catch((e) => aviso(e.message, 'mal'));
@@ -277,6 +282,14 @@ async function cargarModulo(nombre) {
     estado.contactos = contactos.contactos;
     el.guardiaContacto.innerHTML = '<option value="">Funcionario</option>' + estado.contactos.map((c) => `<option value="${c.id}">${escapar(c.nombre)} - ${escapar(c.celularPrincipal)}</option>`).join('');
     el.tablaGuardias.innerHTML = estado.guardias.map((g) => `<tr><td>${escapar(g.fecha)}</td><td>${escapar(g.turno)}</td><td>${escapar(g.rolGuardia)}</td><td>${escapar(g.contactoNombre)}</td><td><a href="tel:${escapar(g.telefono)}">${escapar(g.telefono)}</a></td><td><button class="btn-mini peligro" data-borrar-guardia="${g.id}">Eliminar</button></td></tr>`).join('');
+  }
+  if (nombre === 'visor-guardias') {
+    const fecha = el.visorGuardiasFecha.value || new Date().toISOString().slice(0, 10);
+    el.visorGuardiasFecha.value = fecha;
+    el.imprimirVisorGuardias.href = `/guardias/visor?fecha=${encodeURIComponent(fecha)}`;
+    const r = await pedir(`/api/guardias/visor?fecha=${encodeURIComponent(fecha)}`);
+    el.tablaVisorGuardias.innerHTML = r.guardias.map((g) => `<tr><td>${escapar(g.turno)}</td><td>${escapar(g.rolGuardia)}</td><td>${escapar(g.contactoNombre)}</td><td><a href="tel:${escapar(g.telefono)}">${escapar(g.telefono)}</a></td></tr>`).join('');
+    el.visorGuardiasVacio.hidden = r.guardias.length !== 0;
   }
   if (nombre === 'flores') {
     const q = encodeURIComponent($('#buscarFlores').value || '');
@@ -953,6 +966,7 @@ document.querySelectorAll('[data-directorio]').forEach((b) => b.addEventListener
   document.getElementById(id).addEventListener('change', () => cargarModulo(estado.modulo).catch((e) => aviso(e.message, 'mal')));
 });
 el.guardiaFecha.addEventListener('change', () => cargarModulo('guardias').catch((e) => aviso(e.message, 'mal')));
+el.visorGuardiasFecha.addEventListener('change', () => cargarModulo('visor-guardias').catch((e) => aviso(e.message, 'mal')));
 el.formGuardia.addEventListener('submit', async (evento) => {
   evento.preventDefault();
   try {

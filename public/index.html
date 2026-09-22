@@ -33,6 +33,7 @@
   <button class="tab activo" data-modulo="dashboard" type="button">Internos</button>
   <button class="tab" data-modulo="contactos" type="button" data-restringido>Contactos personales</button>
   <button class="tab" data-modulo="guardias" type="button" data-restringido>Guardias</button>
+  <button class="tab" data-modulo="visor-guardias" type="button">Visor de guardias</button>
   <button class="tab" data-modulo="flores" type="button">Directorio Flores</button>
   <button class="tab" data-modulo="salud" type="button">Salud nacional</button>
 </nav>
@@ -107,6 +108,13 @@
     <div class="modulo-cab"><div><h2>Guardia del día</h2><p>Planilla diaria con contacto directo.</p></div><div><a class="btn" id="imprimirGuardias" href="/guardias/imprimir" target="_blank">Imprimir / PDF</a> <a class="btn" id="exportarGuardias" href="/api/guardias/export.csv" download>Exportar planilla</a></div></div>
     <form class="form-modulo" id="formGuardia"><input id="guardiaFecha" type="date" required><input id="guardiaTurno" placeholder="Turno (día, noche, 24hs)" required><input id="guardiaRol" placeholder="Rol de guardia" required><select id="guardiaContacto" required><option value="">Funcionario</option></select><input id="guardiaNotas" placeholder="Observaciones"><button class="btn primario">Asignar</button></form>
     <div class="tabla-envoltura"><table class="tabla"><thead><tr><th>Fecha</th><th>Turno</th><th>Rol</th><th>Funcionario</th><th>Celular</th><th></th></tr></thead><tbody id="tablaGuardias"></tbody></table></div>
+  </section>
+
+  <section id="moduloVisorGuardias" class="modulo-vista" hidden>
+    <div class="modulo-cab"><div><h2>Guardias de hoy</h2><p>Consulta pública de los teléfonos de guardia cargados para una fecha.</p></div><div><a class="btn" id="imprimirVisorGuardias" href="/guardias/visor" target="_blank">Imprimir / PDF</a></div></div>
+    <div class="fila-controles"><label class="control-fecha">Fecha <input class="campo-modulo" id="visorGuardiaFecha" type="date"></label></div>
+    <div class="tabla-envoltura"><table class="tabla"><thead><tr><th>Turno</th><th>Rol</th><th>Funcionario</th><th>Teléfono directo</th></tr></thead><tbody id="tablaVisorGuardias"></tbody></table></div>
+    <p class="vacio" id="visorGuardiasVacio" hidden>No hay guardias cargadas para esta fecha.</p>
   </section>
 
   <section id="moduloFlores" class="modulo-vista" hidden>
