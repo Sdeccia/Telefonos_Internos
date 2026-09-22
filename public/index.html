@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Internos Telefonicos</title>
+<title>SIGA — Hospital de Flores</title>
 <link rel="stylesheet" href="/styles.css">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>&#9742;</text></svg>">
 </head>
@@ -11,10 +11,10 @@
 
 <header class="barra">
   <div class="marca">
-    <div class="logo" aria-hidden="true">&#9742;</div>
+    <img class="logo-hospital" src="/logo-hospital.jpg" alt="Hospital de Flores Dr. Edison Camacho">
     <div>
-      <h1>Internos Telefonicos</h1>
-      <p class="sub" id="subtitulo">Cargando...</p>
+      <h1>SIGA — Hospital de Flores</h1>
+      <p class="sub" id="subtitulo">Sistema Integrado de Guardias y Agenda</p>
     </div>
   </div>
   <div class="acciones-barra">
@@ -30,13 +30,17 @@
 </header>
 
 <nav class="modulos" id="modulos" aria-label="Modulos">
-  <button class="tab activo" data-modulo="dashboard" type="button">INTERNOS IP HOSPITAL</button>
-  <button class="tab" data-modulo="funcionarios" type="button">FUNCIONARIOS</button>
-  <button class="tab" data-modulo="guardias" type="button" data-restringido>GUARDIAS</button>
-  <button class="tab" data-modulo="visor-guardias" type="button">VISOR DE GUARDIAS</button>
+  <button class="tab activo" data-modulo="dashboard" type="button">INTERNOS HOSPITAL</button>
+  <button class="tab" data-modulo="guardias" type="button" data-restringido>GUARDIAS Y RETENES</button>
+  <button class="tab" data-modulo="funcionarios" type="button" data-restringido>CONTACTOS PERSONALES</button>
   <button class="tab" data-modulo="flores" type="button">DIRECTORIO FLORES</button>
-  <button class="tab" data-modulo="salud" type="button">SALUD NACIONAL</button>
+  <button class="tab" data-modulo="salud" type="button">DIRECTORIO NACIONAL DE SALUD</button>
 </nav>
+
+<div class="barra-estado" aria-live="polite">
+  <span id="fechaHoraActual">Cargando fecha y hora...</span>
+  <span><strong id="guardiasActivas">0</strong> Funcionarios en Guardia Activa</span>
+</div>
 
 <section class="tarjetas" id="tarjetas" aria-label="Resumen del directorio interno">
   <article class="tarjeta"><span class="valor" id="kTotal">0</span><span class="etiqueta">Internos</span></article>
@@ -99,7 +103,7 @@
   </div>
 
   <section id="moduloContactos" class="modulo-vista" hidden>
-    <div class="modulo-cab"><div><h2>Funcionarios</h2><p>Personal hospitalario disponible para armar guardias. Solo telefonistas y administradores.</p></div><button class="btn primario" id="btnNuevoContacto" type="button">+ Nuevo funcionario</button></div>
+    <div class="modulo-cab"><div><h2>Contactos personales</h2><p>Funcionarios, médicos y técnicos disponibles para armar guardias.</p></div><button class="btn primario" id="btnNuevoContacto" type="button">+ Nuevo funcionario</button></div>
     <div class="fila-controles"><input class="campo-modulo" id="buscarContactos" placeholder="Buscar por nombre, C.I., especialidad o función..."></div>
     <div class="tabla-envoltura"><table class="tabla"><thead><tr><th>Nombre</th><th>Rol / función</th><th>Celular principal</th><th>Secundario</th><th>Disponibilidad</th><th></th></tr></thead><tbody id="tablaContactos"></tbody></table></div>
   </section>
@@ -226,7 +230,7 @@
       <div class="modal-cuerpo">
         <p class="pista" id="estadoAdmin">La consulta es pública. Inicia sesión para modificar datos.</p>
         <label>Usuario
-          <select id="fUsuario"><option value="admin">Administrador</option><option value="rrhh">RRHH</option><option value="telefonista">Telefonista</option></select>
+          <select id="fUsuario"><option value="admin">Administrador</option><option value="telefonista">Telefonista</option></select>
         </label>
         <label>Contraseña
           <input id="fPassword" type="password" autocomplete="current-password" required>

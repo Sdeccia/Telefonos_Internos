@@ -1,5 +1,5 @@
 /**
- * Servidor del sistema de internos telefonicos.
+ * Servidor de SIGA - Sistema Integrado de Guardias y Agenda.
  * Node puro, sin dependencias externas.  Uso:  node server.mjs
  */
 import http from 'node:http';
@@ -24,7 +24,6 @@ const HOST = process.env.HOST || '0.0.0.0';
 const ESTADOS = new Set(['activo', 'inactivo']);
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '';
 const TELEFONISTA_PASSWORD = process.env.TELEFONISTA_PASSWORD || '';
-const RRHH_PASSWORD = process.env.RRHH_PASSWORD || '';
 const sesionesAdmin = new Map();
 
 // Puerto real donde quedo escuchando (puede cambiar si el inicial estaba ocupado).
@@ -233,7 +232,7 @@ function esAdmin(req) {
 }
 
 function esGestorPersonal(req) {
-  return ['administrador', 'telefonista', 'rrhh'].includes(rolSesion(req));
+  return ['administrador', 'telefonista'].includes(rolSesion(req));
 }
 
 function cookieSesion(token, maxAge = 60 * 60 * 12) {
@@ -244,7 +243,6 @@ function respuestaAuth(res, estado) {
   return json(res, 200, {
     configurado: Boolean(ADMIN_PASSWORD),
     telefonistaConfigurado: Boolean(TELEFONISTA_PASSWORD),
-    rrhhConfigurado: Boolean(RRHH_PASSWORD),
     autenticado: Boolean(estado),
     rol: estado || null,
   });
@@ -441,6 +439,8 @@ const MIME = {
   '.ico': 'image/x-icon',
   '.json': 'application/json; charset=utf-8',
   '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
 };
 
 async function servirEstatico(res, rutaUrl) {
@@ -473,8 +473,8 @@ async function manejarAPI(req, res, url) {
 
   if (partes[1] === 'auth' && partes[2] === 'login' && metodo === 'POST') {
     const { password, usuario = 'admin' } = await leerCuerpo(req);
-    const rol = ['telefonista', 'rrhh'].includes(usuario) ? usuario : 'administrador';
-    const clave = rol === 'telefonista' ? TELEFONISTA_PASSWORD : rol === 'rrhh' ? RRHH_PASSWORD : ADMIN_PASSWORD;
+    const rol = usuario === 'telefonista' ? 'telefonista' : 'administrador';
+    const clave = rol === 'telefonista' ? TELEFONISTA_PASSWORD : ADMIN_PASSWORD;
     if (!clave) return error(res, 503, `La cuenta ${rol} no esta configurada en el servidor.`);
     if (typeof password !== 'string' || password !== clave) {
       return error(res, 401, 'Contraseña incorrecta.');

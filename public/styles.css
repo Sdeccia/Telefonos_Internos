@@ -55,6 +55,14 @@ h1, h2 { margin: 0; }
   border-radius: 12px;
   font-size: 22px;
 }
+.logo-hospital {
+  display: block;
+  width: 112px;
+  height: 58px;
+  object-fit: contain;
+  object-position: center;
+  flex: 0 0 auto;
+}
 
 .barra h1 { font-size: 19px; letter-spacing: -.2px; }
 .sub { margin: 3px 0 0; color: var(--texto-suave); font-size: 13px; }
@@ -184,6 +192,8 @@ select:focus { outline: 2px solid var(--acento-suave); border-color: var(--acent
 
 .modulos { display: flex; gap: 6px; flex-wrap: wrap; max-width: 1380px; margin: 0 auto; padding: 12px 22px 0; border-bottom: 1px solid var(--borde); }
 .modulos .tab { font-weight: 700; text-transform: uppercase; }
+.barra-estado { display: flex; justify-content: space-between; gap: 16px; max-width: 1380px; margin: 0 auto; padding: 8px 22px; color: var(--texto-suave); background: var(--acento-suave); border-bottom: 1px solid var(--borde); font-size: 12px; text-transform: capitalize; }
+.barra-estado strong { color: var(--acento); font-size: 14px; }
 .modulo-vista { max-width: 1380px; margin: 20px auto; padding: 0 22px; }
 .modulo-cab { display: flex; justify-content: space-between; align-items: start; gap: 16px; margin-bottom: 18px; }
 .modulo-cab h2 { margin: 0 0 5px; font-size: 22px; }
@@ -193,6 +203,7 @@ select:focus { outline: 2px solid var(--acento-suave); border-color: var(--acent
 .modal-admin { width: min(460px, 100%); }
 
 @media (max-width: 900px) {
+  .barra-estado { align-items: flex-start; flex-direction: column; gap: 3px; }
   .form-modulo { grid-template-columns: repeat(2, minmax(120px, 1fr)); }
   .form-modulo .btn { grid-column: 1 / -1; }
 }
