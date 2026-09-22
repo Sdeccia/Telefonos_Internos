@@ -250,7 +250,7 @@ async function asegurarAdmin() {
   return false;
 }
 
-function puedePrivado() { return estado.rol === 'administrador' || estado.rol === 'telefonista'; }
+function puedePrivado() { return ['administrador', 'telefonista', 'rrhh'].includes(estado.rol); }
 
 function cambiarModulo(nombre) {
   if (['funcionarios', 'guardias'].includes(nombre) && !puedePrivado()) {

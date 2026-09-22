@@ -265,4 +265,5 @@ chmod +x iniciar-nas.sh detener-nas.sh
 El archivo `.env` nunca se versiona ni se debe publicar. También puedes definir
 `TELEFONISTA_PASSWORD` para habilitar el rol telefonista: puede gestionar
 contactos personales y guardias, pero no modificar el directorio general ni la
-configuración de internos.
+configuración de internos. Define `RRHH_PASSWORD` para que Recursos Humanos
+sea quien cargue Funcionarios y arme las Guardias.

@@ -24,6 +24,7 @@ const HOST = process.env.HOST || '0.0.0.0';
 const ESTADOS = new Set(['activo', 'inactivo']);
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '';
 const TELEFONISTA_PASSWORD = process.env.TELEFONISTA_PASSWORD || '';
+const RRHH_PASSWORD = process.env.RRHH_PASSWORD || '';
 const sesionesAdmin = new Map();
 
 // Puerto real donde quedo escuchando (puede cambiar si el inicial estaba ocupado).
@@ -231,8 +232,8 @@ function esAdmin(req) {
   return rolSesion(req) === 'administrador';
 }
 
-function esTelefonista(req) {
-  return ['administrador', 'telefonista'].includes(rolSesion(req));
+function esGestorPersonal(req) {
+  return ['administrador', 'telefonista', 'rrhh'].includes(rolSesion(req));
 }
 
 function cookieSesion(token, maxAge = 60 * 60 * 12) {
@@ -243,6 +244,7 @@ function respuestaAuth(res, estado) {
   return json(res, 200, {
     configurado: Boolean(ADMIN_PASSWORD),
     telefonistaConfigurado: Boolean(TELEFONISTA_PASSWORD),
+    rrhhConfigurado: Boolean(RRHH_PASSWORD),
     autenticado: Boolean(estado),
     rol: estado || null,
   });
@@ -471,8 +473,8 @@ async function manejarAPI(req, res, url) {
 
   if (partes[1] === 'auth' && partes[2] === 'login' && metodo === 'POST') {
     const { password, usuario = 'admin' } = await leerCuerpo(req);
-    const rol = usuario === 'telefonista' ? 'telefonista' : 'administrador';
-    const clave = rol === 'telefonista' ? TELEFONISTA_PASSWORD : ADMIN_PASSWORD;
+    const rol = ['telefonista', 'rrhh'].includes(usuario) ? usuario : 'administrador';
+    const clave = rol === 'telefonista' ? TELEFONISTA_PASSWORD : rol === 'rrhh' ? RRHH_PASSWORD : ADMIN_PASSWORD;
     if (!clave) return error(res, 503, `La cuenta ${rol} no esta configurada en el servidor.`);
     if (typeof password !== 'string' || password !== clave) {
       return error(res, 401, 'Contraseña incorrecta.');
@@ -505,8 +507,8 @@ async function manejarAPI(req, res, url) {
 
   const modifica = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(metodo);
   const recursoTelefonista = ['contactos', 'funcionarios', 'guardias'].includes(partes[1]);
-  if (recursoTelefonista && !esTelefonista(req)) {
-    return error(res, 401, 'Este modulo requiere una sesion de telefonista o administrador.');
+  if (recursoTelefonista && !esGestorPersonal(req)) {
+    return error(res, 401, 'Este modulo requiere una sesion de RRHH, telefonista o administrador.');
   }
   if (modifica && !esAdmin(req) && !recursoTelefonista) {
     return error(res, 401, ADMIN_PASSWORD
@@ -959,7 +961,7 @@ const servidor = http.createServer(async (req, res) => {
 
     if (url.pathname === '/guardias/imprimir') {
       await cargarStore();
-      if (!esTelefonista(req)) return error(res, 401, 'Necesitas una sesion de telefonista o administrador.');
+      if (!esGestorPersonal(req)) return error(res, 401, 'Necesitas una sesion de RRHH, telefonista o administrador.');
       const fecha = url.searchParams.get('fecha') || new Date().toISOString().slice(0, 10);
       const guardias = store.guardias.filter((g) => g.fecha === fecha);
       const filas = guardias.map((g) => `<tr><td>${escaparHTML(g.turno)}</td><td>${escaparHTML(g.rolGuardia)}</td><td>${escaparHTML(g.contactoNombre)}</td><td>${escaparHTML(g.telefono)}</td><td>${escaparHTML(g.notas)}</td></tr>`).join('');
