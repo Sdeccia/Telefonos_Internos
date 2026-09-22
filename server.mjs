@@ -25,6 +25,15 @@ const ESTADOS = new Set(['activo', 'inactivo']);
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '';
 const TELEFONISTA_PASSWORD = process.env.TELEFONISTA_PASSWORD || '';
 const sesionesAdmin = new Map();
+const ROLES_URGENCIA = [
+  { id: 'tecnico-tomografo', nombre: 'Tecnico de guardia - Tomografo', buscar: ['tomografo', 'tomografia', 'imagenologia'] },
+  { id: 'medico-imagenologo', nombre: 'Medico imagenologo', buscar: ['imagenologo', 'imagenologia', 'radiologo'] },
+  { id: 'cirujano', nombre: 'Cirujano de guardia', buscar: ['cirujano', 'cirugia'] },
+  { id: 'personal-block', nombre: 'Personal de Block Quirurgico', buscar: ['block', 'quirofano', 'quirurgico'] },
+  { id: 'anestesiologo', nombre: 'Anestesiologo / Anestesista', buscar: ['anestesi', 'anestesiologo'] },
+  { id: 'emergencia', nombre: 'Medico de Emergencia', buscar: ['emergencia', 'urgencia'] },
+  { id: 'enfermeria', nombre: 'Enfermeria de Emergencia', buscar: ['enfermeria', 'enfermero', 'enfermera'] },
+];
 
 // Puerto real donde quedo escuchando (puede cambiar si el inicial estaba ocupado).
 let PUERTO_ACTIVO = PUERTO_INICIAL;
@@ -86,6 +95,10 @@ function datosFloresIniciales() {
     { id: crypto.randomUUID(), categoria: 'Servicios', nombre: 'OSE', telefono: '0800 1871', servicio: 'Atención general', localidad: 'Flores', notas: '' },
     { id: crypto.randomUUID(), categoria: 'Servicios', nombre: 'ANTEL', telefono: '123', servicio: 'Atención general', localidad: 'Flores', notas: '' },
   ];
+}
+
+function normalizarTexto(v) {
+  return String(v ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase();
 }
 
 const esColor = (v) => /^#[0-9a-fA-F]{6}$/.test(String(v || ''));
@@ -503,6 +516,23 @@ async function manejarAPI(req, res, url) {
         id, fecha: fechaGuardia, turno, rolGuardia, contactoNombre, telefono,
       }));
     return json(res, 200, { fecha, guardias });
+  }
+
+  // Visor público de respuesta a politrauma. Solo lectura: toma los
+  // funcionarios cargados y coloca primero a quienes tienen guardia ese día.
+  if (partes[1] === 'urgencias' && partes[2] === 'lista' && metodo === 'GET') {
+    const fecha = url.searchParams.get('fecha') || new Date().toISOString().slice(0, 10);
+    const guardias = store.guardias.filter((g) => g.fecha === fecha);
+    const lista = ROLES_URGENCIA.map((rol) => {
+      const coincidencias = store.contactos_privados.filter((f) => {
+        const texto = normalizarTexto(`${f.rol} ${f.funcion} ${f.nombre}`);
+        return rol.buscar.some((palabra) => texto.includes(palabra));
+      });
+      const deGuardia = guardias.filter((g) => rol.buscar.some((palabra) => normalizarTexto(`${g.rolGuardia} ${g.contactoNombre}`).includes(palabra)));
+      const funcionarios = [...deGuardia.map((g) => ({ nombre: g.contactoNombre, telefono: g.telefono, turno: g.turno, estado: 'de guardia' })), ...coincidencias.filter((f) => !deGuardia.some((g) => g.contactoId === f.id)).map((f) => ({ nombre: f.nombre, telefono: f.celularPrincipal, turno: '', estado: 'contactar' }))];
+      return { ...rol, funcionarios };
+    });
+    return json(res, 200, { fecha, tipo: 'Politraumatizado', roles: lista });
   }
 
   const modifica = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(metodo);

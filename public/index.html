@@ -25,6 +25,7 @@
   <button class="tab" data-modulo="funcionarios" type="button">FUNCIONARIOS</button>
   <button class="tab" data-modulo="flores" type="button">DIRECTORIO FLORES</button>
   <button class="tab" data-modulo="salud" type="button">DIRECTORIO NACIONAL DE SALUD</button>
+  <button class="tab" data-modulo="urgencias" type="button">URGENCIAS</button>
 </nav>
 
 <div class="barra-estado" aria-live="polite">
@@ -132,6 +133,13 @@
     <div class="modulo-cab"><div><h2>Directorio nacional de salud</h2><p>Centros y servicios de salud por departamento.</p></div><button class="btn primario solo-admin" data-directorio="salud" type="button">+ Agregar</button></div>
     <div class="fila-controles"><input class="campo-modulo" id="buscarSalud" placeholder="Buscar centro o servicio..."><select id="filtroDepartamento"><option value="">Todos los departamentos</option><option>Artigas</option><option>Canelones</option><option>Cerro Largo</option><option>Colonia</option><option>Durazno</option><option>Flores</option><option>Florida</option><option>Lavalleja</option><option>Maldonado</option><option>Montevideo</option><option>Paysandu</option><option>Rio Negro</option><option>Rivera</option><option>Rocha</option><option>Salto</option><option>San Jose</option><option>Soriano</option><option>Tacuarembo</option><option>Treinta y Tres</option></select><select id="filtroTipo"><option value="">Todos los tipos</option><option>Hospital ASSE</option><option>Sanatorio Privado / Mutualista</option><option>CTI de Referencia</option><option>Centro Auxiliar</option></select></div>
     <div class="tabla-envoltura"><table class="tabla"><thead><tr><th>Departamento</th><th>Tipo</th><th>Centro</th><th>Localidad</th><th>Telefono</th><th>Servicio</th><th></th></tr></thead><tbody id="tablaSalud"></tbody></table></div>
+  </section>
+
+  <section id="moduloUrgencias" class="modulo-vista" hidden>
+    <div class="modulo-cab"><div><h2>Urgencias: aviso de politraumatizado</h2><p>Lista rápida de técnicos y profesionales a contactar. Se prioriza el personal de guardia.</p></div></div>
+    <div class="fila-controles"><label class="control-fecha">Fecha <input class="campo-modulo" id="urgenciasFecha" type="date"></label><button class="btn primario" id="btnRecargarUrgencias" type="button">Actualizar lista</button></div>
+    <div class="urgencias-aviso"><strong>PROTOCOLO DE AVISO</strong><span>Contactar en orden: tomógrafo, imagenología, cirugía, block quirúrgico y anestesia.</span></div>
+    <div id="listaUrgencias" class="urgencias-lista"></div>
   </section>
 </main>
 

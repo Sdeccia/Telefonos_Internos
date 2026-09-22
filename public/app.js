@@ -74,6 +74,10 @@ const el = {
   moduloVisorGuardias: $('#moduloVisorGuardias'),
   moduloFlores: $('#moduloFlores'),
   moduloSalud: $('#moduloSalud'),
+  moduloUrgencias: $('#moduloUrgencias'),
+  urgenciasFecha: $('#urgenciasFecha'),
+  listaUrgencias: $('#listaUrgencias'),
+  btnRecargarUrgencias: $('#btnRecargarUrgencias'),
   tablaContactos: $('#tablaContactos'),
   tablaGuardias: $('#tablaGuardias'),
   tablaVisorGuardias: $('#tablaVisorGuardias'),
@@ -287,8 +291,8 @@ function cambiarModulo(nombre) {
   el.tarjetas.hidden = nombre !== 'dashboard';
   el.panelDashboard.hidden = nombre !== 'dashboard';
   el.accionesInternos.hidden = nombre !== 'dashboard';
-  [el.moduloContactos, el.moduloGuardias, el.moduloVisorGuardias, el.moduloFlores, el.moduloSalud].forEach((vista) => { vista.hidden = true; });
-  const vista = { funcionarios: el.moduloContactos, guardias: el.moduloGuardias, 'visor-guardias': el.moduloVisorGuardias, flores: el.moduloFlores, salud: el.moduloSalud }[nombre];
+  [el.moduloContactos, el.moduloGuardias, el.moduloVisorGuardias, el.moduloFlores, el.moduloSalud, el.moduloUrgencias].forEach((vista) => { vista.hidden = true; });
+  const vista = { funcionarios: el.moduloContactos, guardias: el.moduloGuardias, 'visor-guardias': el.moduloVisorGuardias, flores: el.moduloFlores, salud: el.moduloSalud, urgencias: el.moduloUrgencias }[nombre];
   if (vista) vista.hidden = false;
   document.querySelectorAll('[data-modulo]').forEach((b) => b.classList.toggle('activo', b.dataset.modulo === nombre));
   if (nombre !== 'dashboard') cargarModulo(nombre).catch((e) => aviso(e.message, 'mal'));
@@ -330,6 +334,12 @@ async function cargarModulo(nombre) {
     const p = new URLSearchParams({ q: $('#buscarSalud').value || '', departamento: $('#filtroDepartamento').value || '', tipo: $('#filtroTipo').value || '' });
     estado.salud = (await pedir(`/api/directorio/salud?${p}`)).registros;
     el.tablaSalud.innerHTML = estado.salud.map((x) => `<tr><td>${escapar(x.departamento)}</td><td>${escapar(x.tipoCentro)}</td><td>${escapar(x.nombre)}</td><td>${escapar(x.localidad)}</td><td>${escapar(x.telefonoCentral)}</td><td>${escapar(x.servicio)}</td><td>${estado.admin ? `<button class="btn-mini peligro" data-borrar-directorio="salud:${x.id}">Eliminar</button>` : ''}</td></tr>`).join('');
+  }
+  if (nombre === 'urgencias') {
+    const fecha = el.urgenciasFecha.value || fechaLocalISO();
+    el.urgenciasFecha.value = fecha;
+    const r = await pedir(`/api/urgencias/lista?fecha=${encodeURIComponent(fecha)}`);
+    el.listaUrgencias.innerHTML = r.roles.map((rol) => `<article class="urgencia-rol"><div class="urgencia-rol-cab"><h3>${escapar(rol.nombre)}</h3><span>${rol.funcionarios.length ? `${rol.funcionarios.length} contacto(s)` : 'Sin funcionario cargado'}</span></div>${rol.funcionarios.length ? `<ul>${rol.funcionarios.map((f) => `<li><span><strong>${escapar(f.nombre)}</strong>${f.turno ? ` <em>${escapar(f.turno)}</em>` : ''}<small>${escapar(f.estado)}</small></span>${f.telefono ? `<a class="telefono-directo" href="tel:${escapar(f.telefono)}">${escapar(f.telefono)}</a>` : '<span class="sin-telefono">Sin telefono</span>'}</li>`).join('')}</ul>` : '<p class="sin-telefono">Cargar un funcionario con esta especialidad o función.</p>'}</article>`).join('');
   }
 }
 
@@ -995,6 +1005,8 @@ document.querySelectorAll('[data-directorio]').forEach((b) => b.addEventListener
 });
 el.guardiaFecha.addEventListener('change', () => cargarModulo('guardias').catch((e) => aviso(e.message, 'mal')));
 el.visorGuardiasFecha.addEventListener('change', () => cargarModulo('visor-guardias').catch((e) => aviso(e.message, 'mal')));
+el.urgenciasFecha.addEventListener('change', () => cargarModulo('urgencias').catch((e) => aviso(e.message, 'mal')));
+el.btnRecargarUrgencias.addEventListener('click', () => cargarModulo('urgencias').catch((e) => aviso(e.message, 'mal')));
 el.formGuardia.addEventListener('submit', async (evento) => {
   evento.preventDefault();
   try {

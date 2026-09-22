@@ -203,6 +203,19 @@ select:focus { outline: 2px solid var(--acento-suave); border-color: var(--acent
 .form-modulo { display: grid; grid-template-columns: repeat(5, minmax(120px, 1fr)) auto; gap: 8px; margin-bottom: 16px; }
 .campo-modulo, .form-modulo input, .form-modulo select { min-height: 38px; border: 1px solid var(--borde); border-radius: 6px; padding: 8px 10px; background: white; color: var(--texto); }
 .modal-admin { width: min(460px, 100%); }
+.urgencias-aviso { display: flex; gap: 12px; align-items: center; margin: 0 0 16px; padding: 12px 14px; border-left: 4px solid #c2410c; background: #fff7ed; color: #7c2d12; }
+.urgencias-lista { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; }
+.urgencia-rol { border: 1px solid var(--borde); border-radius: 8px; background: var(--superficie); overflow: hidden; }
+.urgencia-rol-cab { display: flex; justify-content: space-between; gap: 10px; align-items: center; padding: 12px 14px; background: #f8fafc; border-bottom: 1px solid var(--borde); }
+.urgencia-rol-cab h3 { margin: 0; font-size: 15px; }
+.urgencia-rol-cab span, .urgencia-rol small { color: var(--texto-suave); font-size: 12px; }
+.urgencia-rol ul { list-style: none; padding: 0; margin: 0; }
+.urgencia-rol li { display: flex; justify-content: space-between; gap: 12px; align-items: center; padding: 11px 14px; border-bottom: 1px solid #eef2f7; }
+.urgencia-rol li:last-child { border-bottom: 0; }
+.urgencia-rol li span { display: grid; gap: 3px; }
+.urgencia-rol em { color: #c2410c; font-size: 12px; font-style: normal; }
+.telefono-directo { color: var(--acento); font-weight: 700; white-space: nowrap; }
+.sin-telefono { color: var(--texto-suave); font-size: 13px; padding: 12px 14px; margin: 0; }
 
 @media (max-width: 900px) {
   .barra-estado { align-items: flex-start; flex-direction: column; gap: 3px; }
