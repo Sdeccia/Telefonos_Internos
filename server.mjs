@@ -24,6 +24,7 @@ const HOST = process.env.HOST || '0.0.0.0';
 const ESTADOS = new Set(['activo', 'inactivo']);
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '';
 const TELEFONISTA_PASSWORD = process.env.TELEFONISTA_PASSWORD || '';
+const RRHH_PASSWORD = process.env.RRHH_PASSWORD || '';
 const sesionesAdmin = new Map();
 const ROLES_URGENCIA = [
   { id: 'tecnico-tomografo', nombre: 'Tecnico de guardia - Tomografo', buscar: ['tomografo', 'tomografia', 'imagenologia', 'tec. tomo', 'rayos x'] },
@@ -75,6 +76,19 @@ function migrarModulos(s) {
   }
   if (!Array.isArray(s.contactos_privados)) s.contactos_privados = [];
   if (!Array.isArray(s.guardias)) s.guardias = [];
+  if (!Array.isArray(s.servicios_guardia)) s.servicios_guardia = [];
+  if (!Array.isArray(s.auditoria_guardias)) s.auditoria_guardias = [];
+  for (const guardia of s.guardias) {
+    if (!guardia.servicio) guardia.servicio = guardia.rolGuardia || 'Sin servicio';
+    if (!guardia.rolGuardia) guardia.rolGuardia = guardia.servicio;
+    if (!guardia.horaInicio) guardia.horaInicio = extraerHoraInicio(guardia.turno);
+    if (!guardia.horaFin) guardia.horaFin = extraerHoraFin(guardia.turno);
+    if (!guardia.estado) guardia.estado = 'planificada';
+  }
+  const serviciosExistentes = new Set(s.servicios_guardia.map((servicio) => servicio.nombre));
+  for (const nombre of new Set(s.guardias.map((guardia) => guardia.servicio).filter(Boolean))) {
+    if (!serviciosExistentes.has(nombre)) s.servicios_guardia.push({ id: crypto.randomUUID(), nombre, activo: true });
+  }
   if (!Array.isArray(s.directorio_flores)) s.directorio_flores = datosFloresIniciales();
   if (!Array.isArray(s.directorio_nacional_salud)) s.directorio_nacional_salud = [];
 }
@@ -99,6 +113,22 @@ function datosFloresIniciales() {
 
 function normalizarTexto(v) {
   return String(v ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase();
+}
+
+function extraerHoraInicio(turno) {
+  const coincidencia = String(turno || '').match(/(?:desde\s*(?:h(?:r)?\.?\s*)?|^)(\d{1,2})(?::(\d{2}))?/i);
+  return coincidencia ? `${String(coincidencia[1]).padStart(2, '0')}:${coincidencia[2] || '00'}` : '';
+}
+
+function extraerHoraFin(turno) {
+  const coincidencia = String(turno || '').match(/\b(?:a|hasta)\s*(?:h(?:r)?\.?\s*)?(\d{1,2})(?::(\d{2}))?/i);
+  return coincidencia ? `${String(coincidencia[1]).padStart(2, '0')}:${coincidencia[2] || '00'}` : '';
+}
+
+function turnoTexto(horaInicio, horaFin, anterior = '') {
+  if (horaInicio && horaFin) return `${horaInicio} a ${horaFin}`;
+  if (horaInicio) return `desde ${horaInicio}`;
+  return anterior || 'Guardia';
 }
 
 const esColor = (v) => /^#[0-9a-fA-F]{6}$/.test(String(v || ''));
@@ -248,6 +278,10 @@ function esGestorPersonal(req) {
   return ['administrador', 'telefonista'].includes(rolSesion(req));
 }
 
+function esGestorGuardias(req) {
+  return ['administrador', 'telefonista', 'rrhh'].includes(rolSesion(req));
+}
+
 function cookieSesion(token, maxAge = 60 * 60 * 12) {
   return `internos_admin=${encodeURIComponent(token)}; Max-Age=${maxAge}; HttpOnly; SameSite=Strict; Path=/`;
 }
@@ -256,6 +290,7 @@ function respuestaAuth(res, estado) {
   return json(res, 200, {
     configurado: Boolean(ADMIN_PASSWORD),
     telefonistaConfigurado: Boolean(TELEFONISTA_PASSWORD),
+    rrhhConfigurado: Boolean(RRHH_PASSWORD),
     autenticado: Boolean(estado),
     rol: estado || null,
   });
@@ -481,13 +516,13 @@ async function manejarAPI(req, res, url) {
   const metodo = req.method;
 
   if (partes[1] === 'auth' && partes[2] === 'estado' && metodo === 'GET') {
-    return respuestaAuth(res, esAdmin(req));
+    return respuestaAuth(res, rolSesion(req));
   }
 
   if (partes[1] === 'auth' && partes[2] === 'login' && metodo === 'POST') {
     const { password, usuario = 'admin' } = await leerCuerpo(req);
-    const rol = usuario === 'telefonista' ? 'telefonista' : 'administrador';
-    const clave = rol === 'telefonista' ? TELEFONISTA_PASSWORD : ADMIN_PASSWORD;
+    const rol = ['telefonista', 'rrhh'].includes(usuario) ? usuario : 'administrador';
+    const clave = rol === 'telefonista' ? TELEFONISTA_PASSWORD : rol === 'rrhh' ? RRHH_PASSWORD : ADMIN_PASSWORD;
     if (!clave) return error(res, 503, `La cuenta ${rol} no esta configurada en el servidor.`);
     if (typeof password !== 'string' || password !== clave) {
       return error(res, 401, 'Contraseña incorrecta.');
@@ -536,11 +571,18 @@ async function manejarAPI(req, res, url) {
   }
 
   const modifica = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(metodo);
-  const recursoTelefonista = ['contactos', 'funcionarios', 'guardias'].includes(partes[1]);
-  if (recursoTelefonista && !esGestorPersonal(req)) {
-    return error(res, 401, 'Este modulo requiere una sesion de RRHH, telefonista o administrador.');
+  const recursoFuncionarios = ['contactos', 'funcionarios'].includes(partes[1]);
+  const recursoGuardias = partes[1] === 'guardias';
+  if (recursoFuncionarios && metodo !== 'GET' && !esGestorPersonal(req)) {
+    return error(res, 401, 'Este modulo requiere una sesion de telefonista o administrador.');
   }
-  if (modifica && !esAdmin(req) && !recursoTelefonista) {
+  if (recursoFuncionarios && metodo === 'GET' && !esGestorGuardias(req)) {
+    return error(res, 401, 'La consulta de funcionarios requiere una sesion autorizada.');
+  }
+  if (recursoGuardias && !esGestorGuardias(req)) {
+    return error(res, 401, 'Gestion de Guardias requiere una sesion de RRHH, telefonista o administrador.');
+  }
+  if (modifica && !esAdmin(req) && !recursoFuncionarios && !recursoGuardias) {
     return error(res, 401, ADMIN_PASSWORD
       ? 'Necesitas iniciar sesion como administrador para modificar datos.'
       : 'La cuenta administrador no esta configurada en el servidor.');
@@ -582,6 +624,19 @@ async function manejarAPI(req, res, url) {
     }
   }
 
+  if (partes[1] === 'servicios-guardia') {
+    if (metodo === 'GET') return json(res, 200, { servicios: store.servicios_guardia.filter((s) => s.activo !== false).sort((a, b) => comparar(a.nombre, b.nombre)) });
+    if (!esAdmin(req)) return error(res, 403, 'Solo administrador puede administrar servicios.');
+    if (metodo === 'POST') {
+      const nombre = limpiar((await leerCuerpo(req)).nombre);
+      if (!nombre) throw new ErrorDatos('El nombre del servicio es obligatorio.');
+      if (store.servicios_guardia.some((s) => comparar(s.nombre, nombre) === 0)) throw new ErrorDatos('Ese servicio ya existe.');
+      const servicio = { id: crypto.randomUUID(), nombre, activo: true };
+      await mutar((s) => { s.servicios_guardia.push(servicio); return servicio; });
+      return json(res, 201, { servicio });
+    }
+  }
+
   if (partes[1] === 'guardias') {
     if (metodo === 'GET' && partes[2] === 'export.csv') {
       const fecha = url.searchParams.get('fecha') || '';
@@ -593,23 +648,39 @@ async function manejarAPI(req, res, url) {
     }
     if (metodo === 'GET' && partes.length === 2) {
       const fecha = url.searchParams.get('fecha') || '';
-      const guardias = store.guardias.filter((g) => !fecha || g.fecha === fecha).sort((a, b) => `${a.fecha}${a.turno}`.localeCompare(`${b.fecha}${b.turno}`));
+      const desde = url.searchParams.get('desde') || '';
+      const hasta = url.searchParams.get('hasta') || '';
+      const servicio = url.searchParams.get('servicio') || '';
+      const funcionario = normalizarTexto(url.searchParams.get('funcionario') || '');
+      const estadoGuardia = url.searchParams.get('estado') || '';
+      const guardias = store.guardias.filter((g) =>
+        (!fecha || g.fecha === fecha)
+        && (!desde || g.fecha >= desde)
+        && (!hasta || g.fecha <= hasta)
+        && (!servicio || g.servicio === servicio)
+        && (!funcionario || normalizarTexto(g.contactoNombre).includes(funcionario))
+        && (!estadoGuardia || g.estado === estadoGuardia)
+      ).sort((a, b) => `${a.fecha}${a.horaInicio || a.turno}`.localeCompare(`${b.fecha}${b.horaInicio || b.turno}`));
       return json(res, 200, { guardias });
     }
     if (metodo === 'POST' && partes.length === 2) {
       const cuerpo = await leerCuerpo(req);
-      if (!limpiar(cuerpo.fecha) || !limpiar(cuerpo.turno) || !limpiar(cuerpo.rolGuardia) || !limpiar(cuerpo.contactoId)) throw new ErrorDatos('Fecha, turno, rol y funcionario son obligatorios.');
+      const servicio = limpiar(cuerpo.servicio || cuerpo.rolGuardia);
+      if (!limpiar(cuerpo.fecha) || !servicio || !limpiar(cuerpo.contactoId)) throw new ErrorDatos('Fecha, servicio y funcionario son obligatorios.');
       const contacto = store.contactos_privados.find((c) => c.id === cuerpo.contactoId);
       if (!contacto) throw new ErrorDatos('El contacto seleccionado no existe.');
-      const guardia = { id: crypto.randomUUID(), fecha: limpiar(cuerpo.fecha), turno: limpiar(cuerpo.turno), rolGuardia: limpiar(cuerpo.rolGuardia), contactoId: contacto.id, contactoNombre: contacto.nombre, telefono: contacto.celularPrincipal, notas: limpiar(cuerpo.notas) };
-      await mutar((s) => { s.guardias.push(guardia); return guardia; });
+      const horaInicio = limpiar(cuerpo.horaInicio);
+      const horaFin = limpiar(cuerpo.horaFin);
+      const guardia = { id: crypto.randomUUID(), fecha: limpiar(cuerpo.fecha), servicio, rolGuardia: servicio, horaInicio, horaFin, turno: turnoTexto(horaInicio, horaFin, limpiar(cuerpo.turno)), estado: limpiar(cuerpo.estado) || 'planificada', contactoId: contacto.id, contactoNombre: contacto.nombre, telefono: contacto.celularPrincipal, notas: limpiar(cuerpo.notas) };
+      await mutar((s) => { s.guardias.push(guardia); s.auditoria_guardias.push({ fecha: new Date().toISOString(), accion: 'crear', guardiaId: guardia.id, usuario: rolSesion(req), detalle: guardia.servicio }); return guardia; });
       return json(res, 201, { guardia });
     }
     if (partes.length === 3 && ['PUT', 'PATCH'].includes(metodo)) {
       const id = decodeURIComponent(partes[2]);
       const cuerpo = await leerCuerpo(req);
-      if (!limpiar(cuerpo.fecha) || !limpiar(cuerpo.turno) || !limpiar(cuerpo.rolGuardia) || !limpiar(cuerpo.contactoId)) {
-        throw new ErrorDatos('Fecha, turno, rol y funcionario son obligatorios.');
+      const servicio = limpiar(cuerpo.servicio || cuerpo.rolGuardia);
+      if (!limpiar(cuerpo.fecha) || !servicio || !limpiar(cuerpo.contactoId)) {
+        throw new ErrorDatos('Fecha, servicio y funcionario son obligatorios.');
       }
       const contacto = store.contactos_privados.find((c) => c.id === cuerpo.contactoId);
       if (!contacto) throw new ErrorDatos('El funcionario seleccionado no existe.');
@@ -618,13 +689,18 @@ async function manejarAPI(req, res, url) {
         if (!actual) return null;
         Object.assign(actual, {
           fecha: limpiar(cuerpo.fecha),
-          turno: limpiar(cuerpo.turno),
-          rolGuardia: limpiar(cuerpo.rolGuardia),
+          servicio,
+          rolGuardia: servicio,
+          horaInicio: limpiar(cuerpo.horaInicio),
+          horaFin: limpiar(cuerpo.horaFin),
+          turno: turnoTexto(limpiar(cuerpo.horaInicio), limpiar(cuerpo.horaFin), limpiar(cuerpo.turno)),
+          estado: limpiar(cuerpo.estado) || 'planificada',
           contactoId: contacto.id,
           contactoNombre: contacto.nombre,
           telefono: contacto.celularPrincipal,
           notas: limpiar(cuerpo.notas),
         });
+        s.auditoria_guardias.push({ fecha: new Date().toISOString(), accion: 'editar', guardiaId: id, usuario: rolSesion(req), detalle: servicio });
         return actual;
       });
       if (!guardia) return error(res, 404, 'Guardia no encontrada.');
@@ -632,7 +708,7 @@ async function manejarAPI(req, res, url) {
     }
     if (partes.length === 3 && metodo === 'DELETE') {
       const id = decodeURIComponent(partes[2]);
-      await mutar((s) => { s.guardias = s.guardias.filter((g) => g.id !== id); return true; });
+      await mutar((s) => { s.guardias = s.guardias.filter((g) => g.id !== id); s.auditoria_guardias.push({ fecha: new Date().toISOString(), accion: 'eliminar', guardiaId: id, usuario: rolSesion(req) }); return true; });
       return json(res, 200, { eliminado: id });
     }
   }

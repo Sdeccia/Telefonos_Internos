@@ -111,9 +111,11 @@
   </section>
 
   <section id="moduloGuardias" class="modulo-vista" hidden>
-    <div class="modulo-cab"><div><h2>Gestión de guardias</h2><p>Planilla diaria con contacto directo. Cada asignación puede editarse.</p></div><div><a class="btn" id="imprimirGuardias" href="/guardias/imprimir" target="_blank">Imprimir / PDF</a> <a class="btn" id="exportarGuardias" href="/api/guardias/export.csv" download>Exportar planilla</a></div></div>
-    <form class="form-modulo" id="formGuardia"><input id="guardiaFecha" type="date" required><input id="guardiaTurno" placeholder="Turno (día, noche, 24hs)" required><input id="guardiaRol" placeholder="Rol de guardia" required><select id="guardiaContacto" required><option value="">Funcionario</option></select><input id="guardiaNotas" placeholder="Observaciones"><button class="btn primario" id="btnGuardarGuardia">Asignar</button><button class="btn" id="btnCancelarGuardia" type="button" hidden>Cancelar edición</button></form>
+    <div class="modulo-cab"><div><h2>Gestión de guardias</h2><p>Planificación, control e impresión de la cobertura por servicio.</p></div><div><a class="btn" id="imprimirGuardias" href="/guardias/imprimir" target="_blank">Imprimir / PDF</a> <a class="btn" id="exportarGuardias" href="/api/guardias/export.csv" download>Exportar CSV</a></div></div>
+    <form class="form-modulo form-guardia" id="formGuardia"><input id="guardiaFecha" type="date" required><select id="guardiaServicio" required><option value="">Servicio</option></select><select id="guardiaContacto" required><option value="">Funcionario</option></select><input id="guardiaHoraInicio" type="time" aria-label="Hora de inicio"><input id="guardiaHoraFin" type="time" aria-label="Hora de finalización"><select id="guardiaEstado"><option value="planificada">Planificada</option><option value="confirmada">Confirmada</option><option value="cumplida">Cumplida</option><option value="cancelada">Cancelada</option></select><input id="guardiaNotas" placeholder="Observaciones"><button class="btn primario" id="btnGuardarGuardia">Asignar</button><button class="btn" id="btnCancelarGuardia" type="button" hidden>Cancelar edición</button></form>
+    <div class="fila-controles filtros-guardias"><input id="guardiasDesde" type="date" aria-label="Desde"><input id="guardiasHasta" type="date" aria-label="Hasta"><select id="filtroServicioGuardia"><option value="">Todos los servicios</option></select><input class="campo-modulo" id="filtroFuncionarioGuardia" placeholder="Funcionario"><select id="filtroEstadoGuardia"><option value="">Todos los estados</option><option value="planificada">Planificada</option><option value="confirmada">Confirmada</option><option value="cumplida">Cumplida</option><option value="cancelada">Cancelada</option></select><button class="btn" id="btnFiltrarGuardias" type="button">Aplicar filtros</button></div>
     <div class="tabla-envoltura"><table class="tabla"><thead><tr><th>Fecha</th><th>Turno</th><th>Rol</th><th>Funcionario</th><th>Celular</th><th></th></tr></thead><tbody id="tablaGuardias"></tbody></table></div>
+    <section class="vista-mensual"><div class="modulo-cab"><div><h3>Vista mensual RRHH</h3><p>Asignaciones por servicio y día.</p></div><input id="mesGuardias" type="month" aria-label="Mes de guardias"></div><div class="tabla-envoltura"><table class="tabla tabla-mensual"><thead id="cabeceraMensualGuardias"></thead><tbody id="cuerpoMensualGuardias"></tbody></table></div></section>
   </section>
 
   <section id="moduloVisorGuardias" class="modulo-vista" hidden>
@@ -239,7 +241,7 @@
       <div class="modal-cuerpo">
         <p class="pista" id="estadoAdmin">La consulta es pública. Inicia sesión para modificar datos.</p>
         <label>Usuario
-          <select id="fUsuario"><option value="admin">Administrador</option><option value="telefonista">Telefonista</option></select>
+          <select id="fUsuario"><option value="admin">Administrador</option><option value="rrhh">RRHH</option><option value="telefonista">Telefonista</option></select>
         </label>
         <label>Contraseña
           <input id="fPassword" type="password" autocomplete="current-password" required>

@@ -12,6 +12,20 @@ if (!Array.isArray(store.usuarios)) {
 }
 if (!Array.isArray(store.contactos_privados)) store.contactos_privados = [];
 if (!Array.isArray(store.guardias)) store.guardias = [];
+if (!Array.isArray(store.servicios_guardia)) store.servicios_guardia = [];
+if (!Array.isArray(store.auditoria_guardias)) store.auditoria_guardias = [];
+const serviciosExistentes = new Set(store.servicios_guardia.map((servicio) => servicio.nombre));
+for (const guardia of store.guardias) {
+  guardia.servicio ||= guardia.rolGuardia || 'Sin servicio';
+  guardia.rolGuardia ||= guardia.servicio;
+  guardia.horaInicio ||= '';
+  guardia.horaFin ||= '';
+  guardia.estado ||= 'planificada';
+  if (!serviciosExistentes.has(guardia.servicio)) {
+    store.servicios_guardia.push({ id: crypto.randomUUID(), nombre: guardia.servicio, activo: true });
+    serviciosExistentes.add(guardia.servicio);
+  }
+}
 if (!Array.isArray(store.directorio_flores) || !store.directorio_flores.length) {
   store.directorio_flores = [
     { id: 'flores-911', categoria: 'Emergencias', nombre: 'Emergencias 911', telefono: '911', servicio: 'Emergencias', localidad: 'Trinidad', notas: '' },
@@ -30,7 +44,7 @@ if (!Array.isArray(store.directorio_flores) || !store.directorio_flores.length) 
   ];
 }
 if (!Array.isArray(store.directorio_nacional_salud)) store.directorio_nacional_salud = [];
-store.version = Math.max(Number(store.version) || 1, 216);
+store.version = Math.max(Number(store.version) || 1, 218);
 store.actualizado = new Date().toISOString();
 
 const temporal = `${archivo}.tmp`;
@@ -40,6 +54,7 @@ console.log('Migracion completada:', {
   usuarios: store.usuarios.length,
   contactos: store.contactos_privados.length,
   guardias: store.guardias.length,
+  servicios: store.servicios_guardia.length,
   flores: store.directorio_flores.length,
   salud: store.directorio_nacional_salud.length,
 });

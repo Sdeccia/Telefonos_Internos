@@ -90,12 +90,23 @@ const el = {
   exportarGuardias: $('#exportarGuardias'),
   imprimirGuardias: $('#imprimirGuardias'),
   guardiaFecha: $('#guardiaFecha'),
-  guardiaTurno: $('#guardiaTurno'),
-  guardiaRol: $('#guardiaRol'),
+  guardiaServicio: $('#guardiaServicio'),
+  guardiaHoraInicio: $('#guardiaHoraInicio'),
+  guardiaHoraFin: $('#guardiaHoraFin'),
+  guardiaEstado: $('#guardiaEstado'),
   guardiaContacto: $('#guardiaContacto'),
   guardiaNotas: $('#guardiaNotas'),
   btnGuardarGuardia: $('#btnGuardarGuardia'),
   btnCancelarGuardia: $('#btnCancelarGuardia'),
+  guardiasDesde: $('#guardiasDesde'),
+  guardiasHasta: $('#guardiasHasta'),
+  filtroServicioGuardia: $('#filtroServicioGuardia'),
+  filtroFuncionarioGuardia: $('#filtroFuncionarioGuardia'),
+  filtroEstadoGuardia: $('#filtroEstadoGuardia'),
+  btnFiltrarGuardias: $('#btnFiltrarGuardias'),
+  mesGuardias: $('#mesGuardias'),
+  cabeceraMensualGuardias: $('#cabeceraMensualGuardias'),
+  cuerpoMensualGuardias: $('#cuerpoMensualGuardias'),
 };
 
 const estado = {
@@ -117,6 +128,7 @@ const estado = {
   modulo: 'dashboard',
   contactos: [],
   guardias: [],
+  serviciosGuardia: [],
   flores: [],
   salud: [],
   guardiaEditando: null,
@@ -237,14 +249,16 @@ function abrirAdmin() {
 function cerrarAdmin() { el.modalAdmin.hidden = true; }
 
 function actualizarAdmin() {
-  el.btnAdmin.textContent = estado.admin ? `${estado.rol} (activo)` : 'Acceso';
-  el.btnAdmin.classList.toggle('primario', estado.admin);
-  el.estadoAdmin.textContent = estado.admin
+  const autenticado = Boolean(estado.rol);
+  el.btnAdmin.textContent = autenticado ? `${estado.rol} (activo)` : 'Acceso';
+  el.btnAdmin.classList.toggle('primario', autenticado);
+  el.estadoAdmin.textContent = autenticado
     ? 'Sesión activa. Puedes modificar los datos.'
     : 'La consulta es pública. Inicia sesión para modificar datos.';
-  el.btnLogin.hidden = estado.admin;
-  el.fPassword.hidden = estado.admin;
-  el.btnLogout.hidden = !estado.admin;
+  el.btnLogin.hidden = autenticado;
+  el.fPassword.hidden = autenticado;
+  el.fUsuario.hidden = autenticado;
+  el.btnLogout.hidden = !autenticado;
   document.querySelectorAll('[data-restringido]').forEach((b) => { b.hidden = !puedePrivado(); });
   document.querySelectorAll('.solo-admin').forEach((b) => { b.hidden = !estado.admin; });
 }
@@ -262,7 +276,7 @@ async function asegurarAdmin() {
   return false;
 }
 
-function puedePrivado() { return ['administrador', 'telefonista'].includes(estado.rol); }
+function puedePrivado() { return ['administrador', 'telefonista', 'rrhh'].includes(estado.rol); }
 
 function actualizarBarraEstado() {
   const ahora = new Date();
@@ -285,7 +299,11 @@ async function cargarGuardiasActivas() {
 }
 
 function cambiarModulo(nombre) {
-  if (['funcionarios', 'guardias'].includes(nombre) && !puedePrivado()) {
+  if (nombre === 'funcionarios' && !['administrador', 'telefonista'].includes(estado.rol)) {
+    abrirAdmin();
+    return;
+  }
+  if (nombre === 'guardias' && !puedePrivado()) {
     abrirAdmin();
     return;
   }
@@ -308,15 +326,31 @@ async function cargarModulo(nombre) {
     el.tablaContactos.innerHTML = estado.contactos.map((c) => `<tr><td><strong>${escapar(c.nombre)}</strong><br><small>C.I. ${escapar(c.ci)}</small></td><td>${escapar(c.rol)}<br>${escapar(c.funcion)}</td><td>${escapar(c.celularPrincipal)}</td><td>${escapar(c.celularSecundario)}</td><td>${escapar(c.disponibilidad)} <button class="btn-mini peligro" data-borrar-contacto="${c.id}">Eliminar</button></td></tr>`).join('');
   }
   if (nombre === 'guardias') {
-    const fecha = el.guardiaFecha.value || new Date().toISOString().slice(0, 10);
+    const fecha = el.guardiaFecha.value || fechaLocalISO();
     el.guardiaFecha.value = fecha;
-    el.exportarGuardias.href = `/api/guardias/export.csv?fecha=${encodeURIComponent(fecha)}`;
+    const mes = el.mesGuardias.value || fecha.slice(0, 7);
+    el.mesGuardias.value = mes;
+    const desde = el.guardiasDesde.value || `${mes}-01`;
+    const hasta = el.guardiasHasta.value || `${mes}-${new Date(Number(mes.slice(0, 4)), Number(mes.slice(5, 7)), 0).getDate()}`;
+    el.guardiasDesde.value = desde;
+    el.guardiasHasta.value = hasta;
+    const filtros = new URLSearchParams({ desde, hasta, servicio: el.filtroServicioGuardia.value || '', funcionario: el.filtroFuncionarioGuardia.value || '', estado: el.filtroEstadoGuardia.value || '' });
+    el.exportarGuardias.href = `/api/guardias/export.csv?${filtros}`;
     el.imprimirGuardias.href = `/guardias/imprimir?fecha=${encodeURIComponent(fecha)}`;
-    const [guardias, contactos] = await Promise.all([pedir(`/api/guardias?fecha=${fecha}`), pedir('/api/funcionarios')]);
+    const [guardias, contactos, servicios] = await Promise.all([pedir(`/api/guardias?${filtros}`), pedir('/api/funcionarios'), pedir('/api/servicios-guardia')]);
     estado.guardias = guardias.guardias;
     estado.contactos = contactos.funcionarios;
+    estado.serviciosGuardia = servicios.servicios;
+    const servicioFormulario = el.guardiaServicio.value;
+    const servicioFiltro = el.filtroServicioGuardia.value;
     el.guardiaContacto.innerHTML = '<option value="">Funcionario</option>' + estado.contactos.map((c) => `<option value="${c.id}">${escapar(c.nombre)} - ${escapar(c.celularPrincipal)}</option>`).join('');
-    el.tablaGuardias.innerHTML = estado.guardias.map((g) => `<tr><td>${escapar(g.fecha)}</td><td>${escapar(g.turno)}</td><td>${escapar(g.rolGuardia)}</td><td>${escapar(g.contactoNombre)}</td><td><a href="tel:${escapar(g.telefono)}">${escapar(g.telefono)}</a></td><td><button class="btn-mini" data-editar-guardia="${g.id}">Editar</button> <button class="btn-mini peligro" data-borrar-guardia="${g.id}">Eliminar</button></td></tr>`).join('');
+    const opcionesServicios = estado.serviciosGuardia.map((s) => `<option value="${escapar(s.nombre)}">${escapar(s.nombre)}</option>`).join('');
+    el.guardiaServicio.innerHTML = '<option value="">Servicio</option>' + opcionesServicios;
+    el.filtroServicioGuardia.innerHTML = '<option value="">Todos los servicios</option>' + opcionesServicios;
+    el.guardiaServicio.value = servicioFormulario;
+    el.filtroServicioGuardia.value = servicioFiltro;
+    el.tablaGuardias.innerHTML = estado.guardias.map((g) => `<tr><td>${escapar(g.fecha)}</td><td>${escapar(g.horaInicio && g.horaFin ? `${g.horaInicio} - ${g.horaFin}` : g.turno)}</td><td>${escapar(g.servicio || g.rolGuardia)}</td><td>${escapar(g.contactoNombre)}</td><td><a href="tel:${escapar(g.telefono)}">${escapar(g.telefono)}</a><br><small>${escapar(g.estado || 'planificada')}</small></td><td><button class="btn-mini" data-editar-guardia="${g.id}">Editar</button> <button class="btn-mini peligro" data-borrar-guardia="${g.id}">Eliminar</button></td></tr>`).join('');
+    pintarVistaMensual(mes, estado.guardias);
   }
   if (nombre === 'visor-guardias') {
     const fecha = el.visorGuardiasFecha.value || new Date().toISOString().slice(0, 10);
@@ -346,10 +380,26 @@ async function cargarModulo(nombre) {
   }
 }
 
+function pintarVistaMensual(mes, guardias) {
+  const [anio, numeroMes] = mes.split('-').map(Number);
+  const dias = new Date(anio, numeroMes, 0).getDate();
+  el.cabeceraMensualGuardias.innerHTML = `<tr><th>Servicio</th>${Array.from({ length: dias }, (_, indice) => `<th>${String(indice + 1).padStart(2, '0')}</th>`).join('')}</tr>`;
+  const servicios = estado.serviciosGuardia.map((s) => s.nombre);
+  el.cuerpoMensualGuardias.innerHTML = servicios.map((servicio) => {
+    const celdas = Array.from({ length: dias }, (_, indice) => {
+      const fecha = `${mes}-${String(indice + 1).padStart(2, '0')}`;
+      const asignados = guardias.filter((g) => g.fecha === fecha && (g.servicio || g.rolGuardia) === servicio);
+      return `<td title="${escapar(asignados.map((g) => `${g.contactoNombre} ${g.horaInicio || g.turno}`).join(' | '))}">${asignados.map((g) => escapar(g.contactoNombre.split(/\s+/).map((p) => p[0]).join('').slice(0, 3))).join('<br>')}</td>`;
+    }).join('');
+    return `<tr><th>${escapar(servicio)}</th>${celdas}</tr>`;
+  }).join('');
+}
+
 function cancelarEdicionGuardia() {
   estado.guardiaEditando = null;
   el.formGuardia.reset();
   el.guardiaFecha.value = fechaLocalISO();
+  el.guardiaEstado.value = 'planificada';
   el.btnGuardarGuardia.textContent = 'Asignar';
   el.btnCancelarGuardia.hidden = true;
 }
@@ -359,8 +409,10 @@ function editarGuardia(id) {
   if (!guardia) return;
   estado.guardiaEditando = guardia;
   el.guardiaFecha.value = guardia.fecha;
-  el.guardiaTurno.value = guardia.turno;
-  el.guardiaRol.value = guardia.rolGuardia;
+  el.guardiaServicio.value = guardia.servicio || guardia.rolGuardia;
+  el.guardiaHoraInicio.value = guardia.horaInicio || '';
+  el.guardiaHoraFin.value = guardia.horaFin || '';
+  el.guardiaEstado.value = guardia.estado || 'planificada';
   el.guardiaContacto.value = guardia.contactoId;
   el.guardiaNotas.value = guardia.notas || '';
   el.btnGuardarGuardia.textContent = 'Guardar cambios';
@@ -1029,13 +1081,20 @@ document.querySelectorAll('[data-directorio]').forEach((b) => b.addEventListener
   document.getElementById(id).addEventListener('change', () => cargarModulo(estado.modulo).catch((e) => aviso(e.message, 'mal')));
 });
 el.guardiaFecha.addEventListener('change', () => cargarModulo('guardias').catch((e) => aviso(e.message, 'mal')));
+el.btnFiltrarGuardias.addEventListener('click', () => cargarModulo('guardias').catch((e) => aviso(e.message, 'mal')));
+el.mesGuardias.addEventListener('change', () => {
+  const mes = el.mesGuardias.value;
+  el.guardiasDesde.value = `${mes}-01`;
+  el.guardiasHasta.value = `${mes}-${new Date(Number(mes.slice(0, 4)), Number(mes.slice(5, 7)), 0).getDate()}`;
+  cargarModulo('guardias').catch((e) => aviso(e.message, 'mal'));
+});
 el.visorGuardiasFecha.addEventListener('change', () => cargarModulo('visor-guardias').catch((e) => aviso(e.message, 'mal')));
 el.urgenciasFecha.addEventListener('change', () => cargarModulo('urgencias').catch((e) => aviso(e.message, 'mal')));
 el.btnRecargarUrgencias.addEventListener('click', () => cargarModulo('urgencias').catch((e) => aviso(e.message, 'mal')));
 el.formGuardia.addEventListener('submit', async (evento) => {
   evento.preventDefault();
   try {
-    const cuerpo = { fecha: el.guardiaFecha.value, turno: el.guardiaTurno.value, rolGuardia: el.guardiaRol.value, contactoId: el.guardiaContacto.value, notas: el.guardiaNotas.value };
+    const cuerpo = { fecha: el.guardiaFecha.value, servicio: el.guardiaServicio.value, horaInicio: el.guardiaHoraInicio.value, horaFin: el.guardiaHoraFin.value, estado: el.guardiaEstado.value, contactoId: el.guardiaContacto.value, notas: el.guardiaNotas.value };
     if (estado.guardiaEditando) {
       await pedir(`/api/guardias/${estado.guardiaEditando.id}`, { method: 'PUT', body: JSON.stringify(cuerpo) });
       aviso('Guardia actualizada.', 'ok');

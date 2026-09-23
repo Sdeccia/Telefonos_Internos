@@ -1,8 +1,7 @@
-# Internos Telefonicos
+# SIGA — Hospital de Flores
 
-Sistema web para consultar, agrupar por sector y editar los internos telefonicos
-del hospital. Los datos se guardan en `data/telefonos.json`, que es la base editable
-del sistema.
+Sistema Integrado de Guardias y Agenda para consultar el directorio interno,
+organizar guardias y administrar agendas telefónicas del Hospital de Flores.
 
 > El export original de FreePBX (`extensions.csv`) fue retirado del repositorio
 > porque contenia secretos SIP. Los archivos de datos y respaldos tambien quedan
@@ -266,4 +265,6 @@ El archivo `.env` nunca se versiona ni se debe publicar. También puedes definir
 `TELEFONISTA_PASSWORD` para habilitar el rol telefonista: puede gestionar
 contactos personales y guardias, pero no modificar el directorio general ni la
 configuración de internos. Define `RRHH_PASSWORD` para que Recursos Humanos
-sea quien cargue Funcionarios y arme las Guardias.
+gestione Guardias: consulta Funcionarios, filtra por fecha/servicio/estado,
+edita horarios y estados, e imprime o exporta la planificación. RRHH no puede
+modificar Internos Hospital, Funcionarios ni los directorios generales.

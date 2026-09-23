@@ -216,6 +216,14 @@ select:focus { outline: 2px solid var(--acento-suave); border-color: var(--acent
 .urgencia-rol em { color: #c2410c; font-size: 12px; font-style: normal; }
 .telefono-directo { color: var(--acento); font-weight: 700; white-space: nowrap; }
 .sin-telefono { color: var(--texto-suave); font-size: 13px; padding: 12px 14px; margin: 0; }
+.vista-mensual { margin-top: 28px; }
+.vista-mensual h3 { margin: 0 0 4px; font-size: 18px; }
+.tabla-mensual { min-width: 1250px; font-size: 11px; table-layout: fixed; }
+.tabla-mensual th, .tabla-mensual td { padding: 7px 4px; text-align: center; vertical-align: top; }
+.tabla-mensual th:first-child { position: sticky; left: 0; min-width: 150px; text-align: left; background: #f8fafc; z-index: 1; }
+.tabla-mensual td { min-width: 32px; line-height: 1.35; color: var(--texto-suave); }
+.filtros-guardias { margin-bottom: 16px; }
+.form-guardia { grid-template-columns: repeat(4, minmax(120px, 1fr)) auto; }
 
 @media (max-width: 900px) {
   .barra-estado { align-items: flex-start; flex-direction: column; gap: 3px; }
