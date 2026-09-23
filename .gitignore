@@ -9,6 +9,7 @@ extensions.csv
 # Capturas y datos locales de herramientas.
 captura-*.png
 .chrome-cdp/
+TABLAS/
 
 # Archivos temporales.
 *.tmp
