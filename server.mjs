@@ -26,8 +26,8 @@ const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '';
 const TELEFONISTA_PASSWORD = process.env.TELEFONISTA_PASSWORD || '';
 const sesionesAdmin = new Map();
 const ROLES_URGENCIA = [
-  { id: 'tecnico-tomografo', nombre: 'Tecnico de guardia - Tomografo', buscar: ['tomografo', 'tomografia', 'imagenologia'] },
-  { id: 'medico-imagenologo', nombre: 'Medico imagenologo', buscar: ['imagenologo', 'imagenologia', 'radiologo'] },
+  { id: 'tecnico-tomografo', nombre: 'Tecnico de guardia - Tomografo', buscar: ['tomografo', 'tomografia', 'imagenologia', 'tec. tomo', 'rayos x'] },
+  { id: 'medico-imagenologo', nombre: 'Medico imagenologo', buscar: ['imagenologo', 'imagenologia', 'radiologo', 'med. tomo', 'tomo'] },
   { id: 'cirujano', nombre: 'Cirujano de guardia', buscar: ['cirujano', 'cirugia'] },
   { id: 'personal-block', nombre: 'Personal de Block Quirurgico', buscar: ['block', 'quirofano', 'quirurgico'] },
   { id: 'anestesiologo', nombre: 'Anestesiologo / Anestesista', buscar: ['anestesi', 'anestesiologo'] },
@@ -604,6 +604,31 @@ async function manejarAPI(req, res, url) {
       const guardia = { id: crypto.randomUUID(), fecha: limpiar(cuerpo.fecha), turno: limpiar(cuerpo.turno), rolGuardia: limpiar(cuerpo.rolGuardia), contactoId: contacto.id, contactoNombre: contacto.nombre, telefono: contacto.celularPrincipal, notas: limpiar(cuerpo.notas) };
       await mutar((s) => { s.guardias.push(guardia); return guardia; });
       return json(res, 201, { guardia });
+    }
+    if (partes.length === 3 && ['PUT', 'PATCH'].includes(metodo)) {
+      const id = decodeURIComponent(partes[2]);
+      const cuerpo = await leerCuerpo(req);
+      if (!limpiar(cuerpo.fecha) || !limpiar(cuerpo.turno) || !limpiar(cuerpo.rolGuardia) || !limpiar(cuerpo.contactoId)) {
+        throw new ErrorDatos('Fecha, turno, rol y funcionario son obligatorios.');
+      }
+      const contacto = store.contactos_privados.find((c) => c.id === cuerpo.contactoId);
+      if (!contacto) throw new ErrorDatos('El funcionario seleccionado no existe.');
+      const guardia = await mutar((s) => {
+        const actual = s.guardias.find((g) => g.id === id);
+        if (!actual) return null;
+        Object.assign(actual, {
+          fecha: limpiar(cuerpo.fecha),
+          turno: limpiar(cuerpo.turno),
+          rolGuardia: limpiar(cuerpo.rolGuardia),
+          contactoId: contacto.id,
+          contactoNombre: contacto.nombre,
+          telefono: contacto.celularPrincipal,
+          notas: limpiar(cuerpo.notas),
+        });
+        return actual;
+      });
+      if (!guardia) return error(res, 404, 'Guardia no encontrada.');
+      return json(res, 200, { guardia });
     }
     if (partes.length === 3 && metodo === 'DELETE') {
       const id = decodeURIComponent(partes[2]);

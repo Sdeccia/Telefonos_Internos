@@ -94,6 +94,8 @@ const el = {
   guardiaRol: $('#guardiaRol'),
   guardiaContacto: $('#guardiaContacto'),
   guardiaNotas: $('#guardiaNotas'),
+  btnGuardarGuardia: $('#btnGuardarGuardia'),
+  btnCancelarGuardia: $('#btnCancelarGuardia'),
 };
 
 const estado = {
@@ -117,6 +119,7 @@ const estado = {
   guardias: [],
   flores: [],
   salud: [],
+  guardiaEditando: null,
 };
 
 const POR_PAGINA = 5;
@@ -313,7 +316,7 @@ async function cargarModulo(nombre) {
     estado.guardias = guardias.guardias;
     estado.contactos = contactos.funcionarios;
     el.guardiaContacto.innerHTML = '<option value="">Funcionario</option>' + estado.contactos.map((c) => `<option value="${c.id}">${escapar(c.nombre)} - ${escapar(c.celularPrincipal)}</option>`).join('');
-    el.tablaGuardias.innerHTML = estado.guardias.map((g) => `<tr><td>${escapar(g.fecha)}</td><td>${escapar(g.turno)}</td><td>${escapar(g.rolGuardia)}</td><td>${escapar(g.contactoNombre)}</td><td><a href="tel:${escapar(g.telefono)}">${escapar(g.telefono)}</a></td><td><button class="btn-mini peligro" data-borrar-guardia="${g.id}">Eliminar</button></td></tr>`).join('');
+    el.tablaGuardias.innerHTML = estado.guardias.map((g) => `<tr><td>${escapar(g.fecha)}</td><td>${escapar(g.turno)}</td><td>${escapar(g.rolGuardia)}</td><td>${escapar(g.contactoNombre)}</td><td><a href="tel:${escapar(g.telefono)}">${escapar(g.telefono)}</a></td><td><button class="btn-mini" data-editar-guardia="${g.id}">Editar</button> <button class="btn-mini peligro" data-borrar-guardia="${g.id}">Eliminar</button></td></tr>`).join('');
   }
   if (nombre === 'visor-guardias') {
     const fecha = el.visorGuardiasFecha.value || new Date().toISOString().slice(0, 10);
@@ -341,6 +344,28 @@ async function cargarModulo(nombre) {
     const r = await pedir(`/api/urgencias/lista?fecha=${encodeURIComponent(fecha)}`);
     el.listaUrgencias.innerHTML = r.roles.map((rol) => `<article class="urgencia-rol"><div class="urgencia-rol-cab"><h3>${escapar(rol.nombre)}</h3><span>${rol.funcionarios.length ? `${rol.funcionarios.length} contacto(s)` : 'Sin funcionario cargado'}</span></div>${rol.funcionarios.length ? `<ul>${rol.funcionarios.map((f) => `<li><span><strong>${escapar(f.nombre)}</strong>${f.turno ? ` <em>${escapar(f.turno)}</em>` : ''}<small>${escapar(f.estado)}</small></span>${f.telefono ? `<a class="telefono-directo" href="tel:${escapar(f.telefono)}">${escapar(f.telefono)}</a>` : '<span class="sin-telefono">Sin telefono</span>'}</li>`).join('')}</ul>` : '<p class="sin-telefono">Cargar un funcionario con esta especialidad o función.</p>'}</article>`).join('');
   }
+}
+
+function cancelarEdicionGuardia() {
+  estado.guardiaEditando = null;
+  el.formGuardia.reset();
+  el.guardiaFecha.value = fechaLocalISO();
+  el.btnGuardarGuardia.textContent = 'Asignar';
+  el.btnCancelarGuardia.hidden = true;
+}
+
+function editarGuardia(id) {
+  const guardia = estado.guardias.find((g) => g.id === id);
+  if (!guardia) return;
+  estado.guardiaEditando = guardia;
+  el.guardiaFecha.value = guardia.fecha;
+  el.guardiaTurno.value = guardia.turno;
+  el.guardiaRol.value = guardia.rolGuardia;
+  el.guardiaContacto.value = guardia.contactoId;
+  el.guardiaNotas.value = guardia.notas || '';
+  el.btnGuardarGuardia.textContent = 'Guardar cambios';
+  el.btnCancelarGuardia.hidden = false;
+  el.formGuardia.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
 async function nuevoContacto() {
@@ -1010,18 +1035,26 @@ el.btnRecargarUrgencias.addEventListener('click', () => cargarModulo('urgencias'
 el.formGuardia.addEventListener('submit', async (evento) => {
   evento.preventDefault();
   try {
-    await pedir('/api/guardias', { method: 'POST', body: JSON.stringify({ fecha: el.guardiaFecha.value, turno: el.guardiaTurno.value, rolGuardia: el.guardiaRol.value, contactoId: el.guardiaContacto.value, notas: el.guardiaNotas.value }) });
-    aviso('Guardia asignada.', 'ok');
-    el.formGuardia.reset();
-    el.guardiaFecha.value = new Date().toISOString().slice(0, 10);
+    const cuerpo = { fecha: el.guardiaFecha.value, turno: el.guardiaTurno.value, rolGuardia: el.guardiaRol.value, contactoId: el.guardiaContacto.value, notas: el.guardiaNotas.value };
+    if (estado.guardiaEditando) {
+      await pedir(`/api/guardias/${estado.guardiaEditando.id}`, { method: 'PUT', body: JSON.stringify(cuerpo) });
+      aviso('Guardia actualizada.', 'ok');
+    } else {
+      await pedir('/api/guardias', { method: 'POST', body: JSON.stringify(cuerpo) });
+      aviso('Guardia asignada.', 'ok');
+    }
+    cancelarEdicionGuardia();
     await cargarModulo('guardias');
     await cargarGuardiasActivas();
   } catch (e) { aviso(e.message, 'mal'); }
 });
+el.btnCancelarGuardia.addEventListener('click', cancelarEdicionGuardia);
 document.addEventListener('click', async (evento) => {
   const contacto = evento.target.closest('[data-borrar-contacto]');
   const guardia = evento.target.closest('[data-borrar-guardia]');
+  const editar = evento.target.closest('[data-editar-guardia]');
   const directorio = evento.target.closest('[data-borrar-directorio]');
+  if (editar) { editarGuardia(editar.dataset.editarGuardia); return; }
   if (contacto && confirm('Eliminar funcionario?')) await pedir(`/api/funcionarios/${contacto.dataset.borrarContacto}`, { method: 'DELETE' });
   if (guardia && confirm('Eliminar guardia?')) await pedir(`/api/guardias/${guardia.dataset.borrarGuardia}`, { method: 'DELETE' });
   if (directorio && confirm('Eliminar registro?')) { const [campo, id] = directorio.dataset.borrarDirectorio.split(':'); await pedir(`/api/directorio/${campo}/${id}`, { method: 'DELETE' }); }

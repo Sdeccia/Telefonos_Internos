@@ -21,11 +21,11 @@
 
 <nav class="modulos" id="modulos" aria-label="Modulos">
   <button class="tab activo" data-modulo="dashboard" type="button">INTERNOS HOSPITAL</button>
-  <button class="tab" data-modulo="guardias" type="button" data-restringido>GUARDIAS Y RETENES</button>
+  <button class="tab" data-modulo="guardias" type="button" data-restringido>GESTION DE GUARDIAS</button>
   <button class="tab" data-modulo="funcionarios" type="button">FUNCIONARIOS</button>
   <button class="tab" data-modulo="flores" type="button">DIRECTORIO FLORES</button>
   <button class="tab" data-modulo="salud" type="button">DIRECTORIO NACIONAL DE SALUD</button>
-  <button class="tab" data-modulo="urgencias" type="button">URGENCIAS</button>
+  <button class="tab" data-modulo="urgencias" type="button">GUARDIAS</button>
 </nav>
 
 <div class="barra-estado" aria-live="polite">
@@ -111,8 +111,8 @@
   </section>
 
   <section id="moduloGuardias" class="modulo-vista" hidden>
-    <div class="modulo-cab"><div><h2>Guardia del día</h2><p>Planilla diaria con contacto directo.</p></div><div><a class="btn" id="imprimirGuardias" href="/guardias/imprimir" target="_blank">Imprimir / PDF</a> <a class="btn" id="exportarGuardias" href="/api/guardias/export.csv" download>Exportar planilla</a></div></div>
-    <form class="form-modulo" id="formGuardia"><input id="guardiaFecha" type="date" required><input id="guardiaTurno" placeholder="Turno (día, noche, 24hs)" required><input id="guardiaRol" placeholder="Rol de guardia" required><select id="guardiaContacto" required><option value="">Funcionario</option></select><input id="guardiaNotas" placeholder="Observaciones"><button class="btn primario">Asignar</button></form>
+    <div class="modulo-cab"><div><h2>Gestión de guardias</h2><p>Planilla diaria con contacto directo. Cada asignación puede editarse.</p></div><div><a class="btn" id="imprimirGuardias" href="/guardias/imprimir" target="_blank">Imprimir / PDF</a> <a class="btn" id="exportarGuardias" href="/api/guardias/export.csv" download>Exportar planilla</a></div></div>
+    <form class="form-modulo" id="formGuardia"><input id="guardiaFecha" type="date" required><input id="guardiaTurno" placeholder="Turno (día, noche, 24hs)" required><input id="guardiaRol" placeholder="Rol de guardia" required><select id="guardiaContacto" required><option value="">Funcionario</option></select><input id="guardiaNotas" placeholder="Observaciones"><button class="btn primario" id="btnGuardarGuardia">Asignar</button><button class="btn" id="btnCancelarGuardia" type="button" hidden>Cancelar edición</button></form>
     <div class="tabla-envoltura"><table class="tabla"><thead><tr><th>Fecha</th><th>Turno</th><th>Rol</th><th>Funcionario</th><th>Celular</th><th></th></tr></thead><tbody id="tablaGuardias"></tbody></table></div>
   </section>
 
